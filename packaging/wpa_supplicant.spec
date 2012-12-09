@@ -10,6 +10,7 @@ Source1:        config
 Source2:        wpa_supplicant.conf
 Source3:        fi.epitest.hostap.WPASupplicant.service
 Source4:        fi.w1.wpa_supplicant1.service
+Source5:        wpa_supplicant.service
 BuildRequires:  dbus-devel
 BuildRequires:  libnl-devel
 BuildRequires:  openssl-devel
@@ -48,6 +49,11 @@ install -d %{buildroot}%{_mandir}/man{5,8}
 install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8
 install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5
 
+# install systemd service file
+mkdir -p %{buildroot}%{_unitdir}
+install -m 0644 %{SOURCE5} %{buildroot}%{_unitdir}
+mkdir -p %{buildroot}%{_unitdir}/network.target.wants
+ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa_supplicant.service
 
 %docs_package
 
@@ -62,6 +68,7 @@ install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5
 %dir %{_localstatedir}/run/%{name}
 %ghost %{_localstatedir}/run/%{name}
 %dir %{_sysconfdir}/%{name}
-
+%{_unitdir}/wpa_supplicant.service
+%{_unitdir}/network.target.wants/wpa_supplicant.service
 
 %changelog
