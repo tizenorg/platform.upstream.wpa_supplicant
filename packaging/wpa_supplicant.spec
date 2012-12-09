@@ -9,7 +9,7 @@ Source:         http://hostap.epitest.fi/releases/wpa_supplicant-%{version}.tar.
 Source1:        config
 Source2:        wpa_supplicant.conf
 Source3:        fi.epitest.hostap.WPASupplicant.service
-Source5:        fi.w1.wpa_supplicant1.service
+Source4:        fi.w1.wpa_supplicant1.service
 BuildRequires:  dbus-devel
 BuildRequires:  libnl-devel
 BuildRequires:  openssl-devel
@@ -42,7 +42,7 @@ install -d %{buildroot}/%{_sysconfdir}/%{name}
 install -m 0600 %{SOURCE2} %{buildroot}/%{_sysconfdir}/%{name}
 install -d %{buildroot}/%{_datadir}/dbus-1/system-services
 install -m 0644 %{SOURCE3} %{buildroot}/%{_datadir}/dbus-1/system-services
-install -m 0644 %{SOURCE5} %{buildroot}/%{_datadir}/dbus-1/system-services
+install -m 0644 %{SOURCE4} %{buildroot}/%{_datadir}/dbus-1/system-services
 install -d %{buildroot}/%{_localstatedir}/run/%{name}
 install -d %{buildroot}%{_mandir}/man{5,8}
 install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8
