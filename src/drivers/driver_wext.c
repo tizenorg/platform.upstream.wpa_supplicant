@@ -54,12 +54,12 @@ int wpa_driver_wext_set_auth_param(struct wpa_driver_wext_data *drv,
 	iwr.u.param.value = value;
 
 	if (ioctl(drv->ioctl_sock, SIOCSIWAUTH, &iwr) < 0) {
+		ret = errno == EOPNOTSUPP ? -2 : -1;
 		if (errno != EOPNOTSUPP) {
 			wpa_printf(MSG_DEBUG, "WEXT: SIOCSIWAUTH(param %d "
 				   "value 0x%x) failed: %s)",
 				   idx, value, strerror(errno));
 		}
-		ret = errno == EOPNOTSUPP ? -2 : -1;
 	}
 
 	return ret;
