@@ -7,7 +7,6 @@ Url:            http://hostap.epitest.fi/wpa_supplicant/
 Group:          Productivity/Networking/Other
 Source:         http://hostap.epitest.fi/releases/wpa_supplicant-%{version}.tar.bz2
 Source1:        config
-Source5:        wpa_supplicant.service
 BuildRequires:  dbus-devel
 BuildRequires:  libnl-devel
 BuildRequires:  openssl-devel
@@ -47,7 +46,7 @@ install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5
 
 # install systemd service file
 mkdir -p %{buildroot}%{_unitdir}
-install -m 0644 %{SOURCE5} %{buildroot}%{_unitdir}
+install -m 0644 wpa_supplicant/systemd/wpa_supplicant.service %{buildroot}%{_unitdir}
 mkdir -p %{buildroot}%{_unitdir}/network.target.wants
 ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa_supplicant.service
 
