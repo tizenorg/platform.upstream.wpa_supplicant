@@ -30,7 +30,7 @@ cp %{SOURCE1} wpa_supplicant/.config
 
 %build
 cd wpa_supplicant
-CFLAGS="%{optflags}" make V=1 %{?_smp_mflags}
+CFLAGS="%{optflags}" make V=1 BINDIR=%{_sbindir} %{?_smp_mflags}
 
 %install
 install -d %{buildroot}/%{_sbindir}
