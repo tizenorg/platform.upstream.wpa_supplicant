@@ -8,8 +8,6 @@ Group:          Productivity/Networking/Other
 Source:         http://hostap.epitest.fi/releases/wpa_supplicant-%{version}.tar.bz2
 Source1:        config
 Source2:        wpa_supplicant.conf
-Source3:        fi.epitest.hostap.WPASupplicant.service
-Source4:        fi.w1.wpa_supplicant1.service
 Source5:        wpa_supplicant.service
 BuildRequires:  dbus-devel
 BuildRequires:  libnl-devel
@@ -42,8 +40,8 @@ install -m 0644 wpa_supplicant/dbus/dbus-wpa_supplicant.conf %{buildroot}%{_sysc
 install -d %{buildroot}/%{_sysconfdir}/%{name}
 install -m 0600 %{SOURCE2} %{buildroot}/%{_sysconfdir}/%{name}
 install -d %{buildroot}/%{_datadir}/dbus-1/system-services
-install -m 0644 %{SOURCE3} %{buildroot}/%{_datadir}/dbus-1/system-services
-install -m 0644 %{SOURCE4} %{buildroot}/%{_datadir}/dbus-1/system-services
+install -m 0644 wpa_supplicant/dbus/fi.epitest.hostap.WPASupplicant.service %{buildroot}/%{_datadir}/dbus-1/system-services
+install -m 0644 wpa_supplicant/dbus/fi.w1.wpa_supplicant1.service %{buildroot}/%{_datadir}/dbus-1/system-services
 install -d %{buildroot}/%{_localstatedir}/run/%{name}
 install -d %{buildroot}%{_mandir}/man{5,8}
 install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8
