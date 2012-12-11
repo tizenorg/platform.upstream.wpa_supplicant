@@ -1,3 +1,10 @@
+* Tue Dec 11 2012 Anas Nashif <anas.nashif@intel.com> submit/trunk/20121209.224336@28991fa
+[Mcvittie, Simon]
+- Use the upstream systemd service instead of our downstream copy
+- Do not install wpa_supplicant.conf
+- Use the upstream-provided D-Bus system service files
+- Tell the wpa_supplicant build system where we will install it
+
 * Sun Dec 09 2012 Anas Nashif <anas.nashif@intel.com> upstream/1.0@d8242dc
 - add systemd service
 - add changelog and dbus service files
