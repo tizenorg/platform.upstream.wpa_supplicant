@@ -1,3 +1,6 @@
+* Mon Mar 18 2013 Anas Nashif <anas.nashif@intel.com> submit/trunk/20121211.132453@2a7d615
+- Fixed package groups
+
 * Tue Dec 11 2012 Anas Nashif <anas.nashif@intel.com> submit/trunk/20121209.224336@28991fa
 [Mcvittie, Simon]
 - Use the upstream systemd service instead of our downstream copy

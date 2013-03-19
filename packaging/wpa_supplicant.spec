@@ -4,7 +4,7 @@ Release:        0
 License:        BSD-3-Clause ; GPL-2.0+
 Summary:        WPA supplicant implementation
 Url:            http://hostap.epitest.fi/wpa_supplicant/
-Group:          Productivity/Networking/Other
+Group:          Connectivity/Wireless
 Source:         http://hostap.epitest.fi/releases/wpa_supplicant-%{version}.tar.bz2
 Source1:        config
 BuildRequires:  dbus-devel
@@ -54,6 +54,7 @@ ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa
 
 %files
 %defattr(-,root,root)
+%license COPYING
 %{_sbindir}/wpa_cli
 %{_sbindir}/wpa_passphrase
 %{_sbindir}/wpa_supplicant
