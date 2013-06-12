@@ -1,3 +1,6 @@
+* Wed Jun 12 00:31:35 UTC 2013 - tracy.graydon@intel.com
+- Fix build/rpmlint errors. (Needed for TIVI-1026) 
+
 * Mon Mar 18 2013 Anas Nashif <anas.nashif@intel.com> submit/trunk/20121211.132453@2a7d615
 - Fixed package groups
 

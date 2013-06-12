@@ -1,7 +1,7 @@
 Name:           wpa_supplicant
-Version:        1.0
+Version:        1.1
 Release:        0
-License:        BSD-3-Clause ; GPL-2.0+
+License:        BSD-3-Clause and GPL-2.0+
 Summary:        WPA supplicant implementation
 Url:            http://hostap.epitest.fi/wpa_supplicant/
 Group:          Connectivity/Wireless
@@ -28,6 +28,7 @@ cp %{SOURCE1} wpa_supplicant/.config
 cd wpa_supplicant
 CFLAGS="%{optflags}" make V=1 BINDIR=%{_sbindir} %{?_smp_mflags}
 
+
 %install
 install -d %{buildroot}/%{_sbindir}
 install -m 0755 wpa_supplicant/wpa_cli %{buildroot}%{_sbindir}
@@ -45,12 +46,16 @@ install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8
 install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5
 
 # install systemd service file
-mkdir -p %{buildroot}%{_unitdir}
-install -m 0644 wpa_supplicant/systemd/wpa_supplicant.service %{buildroot}%{_unitdir}
-mkdir -p %{buildroot}%{_unitdir}/network.target.wants
-ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa_supplicant.service
+mkdir -p %{buildroot}%{_unitdir_user}
+install -m 0644 wpa_supplicant/systemd/wpa_supplicant.service %{buildroot}%{_unitdir_user}
+mkdir -p %{buildroot}%{_unitdir_user}/network.target.wants
+ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir_user}/network.target.wants/wpa_supplicant.service
 
 %docs_package
+
+%post
+touch %{_localstatedir}/run/%{name}
+ 
 
 %files
 %defattr(-,root,root)
@@ -61,8 +66,6 @@ ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa
 %config %{_sysconfdir}/dbus-1/system.d/%{name}.conf
 %{_datadir}/dbus-1/system-services
 %dir %{_localstatedir}/run/%{name}
-%ghost %{_localstatedir}/run/%{name}
-%{_unitdir}/wpa_supplicant.service
-%{_unitdir}/network.target.wants/wpa_supplicant.service
-
-%changelog
+%ghost /var/run/%{name}
+%{_unitdir_user}/wpa_supplicant.service
+%{_unitdir_user}/network.target.wants/wpa_supplicant.service
