@@ -1,7 +1,7 @@
 Name:           wpa_supplicant
 Version:        1.0
 Release:        0
-License:        BSD-3-Clause ; GPL-2.0+
+License:        BSD-3-Clause and GPL-2.0+
 Summary:        WPA supplicant implementation
 Url:            http://hostap.epitest.fi/wpa_supplicant/
 Group:          Connectivity/Wireless
@@ -12,6 +12,7 @@ BuildRequires:  libnl-devel
 BuildRequires:  openssl-devel
 BuildRequires:  pkg-config
 BuildRequires:  readline-devel
+BuildRequires:  systemd
 
 %description
 wpa_supplicant is an implementation of the WPA Supplicant component,
@@ -27,6 +28,7 @@ cp %{SOURCE1} wpa_supplicant/.config
 %build
 cd wpa_supplicant
 CFLAGS="%{optflags}" make V=1 BINDIR=%{_sbindir} %{?_smp_mflags}
+
 
 %install
 install -d %{buildroot}/%{_sbindir}
@@ -52,6 +54,7 @@ ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa
 
 %docs_package
 
+
 %files
 %defattr(-,root,root)
 %license COPYING
@@ -61,8 +64,6 @@ ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa
 %config %{_sysconfdir}/dbus-1/system.d/%{name}.conf
 %{_datadir}/dbus-1/system-services
 %dir %{_localstatedir}/run/%{name}
-%ghost %{_localstatedir}/run/%{name}
+%ghost /var/run/%{name}
 %{_unitdir}/wpa_supplicant.service
 %{_unitdir}/network.target.wants/wpa_supplicant.service
-
-%changelog
