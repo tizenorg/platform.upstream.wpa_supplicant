@@ -7,6 +7,7 @@ Url:            http://hostap.epitest.fi/wpa_supplicant/
 Group:          Connectivity/Wireless
 Source:         http://hostap.epitest.fi/releases/wpa_supplicant-%{version}.tar.bz2
 Source1:        config
+Source1001: 	wpa_supplicant.manifest
 BuildRequires:  dbus-devel
 BuildRequires:  libnl-devel
 BuildRequires:  openssl-devel
@@ -22,6 +23,7 @@ IEEE 802.11 authentication/association of the wlan driver.
 
 %prep
 %setup -q -n wpa_supplicant-%{version}
+cp %{SOURCE1001} .
 rm -rf wpa_supplicant-%{version}/patches
 cp %{SOURCE1} wpa_supplicant/.config
 
@@ -56,6 +58,7 @@ ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa
 
 
 %files
+%manifest %{name}.manifest
 %defattr(-,root,root)
 %license COPYING
 %{_sbindir}/wpa_cli
