@@ -2,8 +2,14 @@
  * EAP peer state machines internal structures (RFC 4137)
  * Copyright (c) 2004-2007, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef EAP_I_H
@@ -317,7 +323,6 @@ struct eap_sm {
 	void *msg_ctx;
 	void *scard_ctx;
 	void *ssl_ctx;
-	void *ssl_ctx2;
 
 	unsigned int workaround;
 
@@ -330,9 +335,6 @@ struct eap_sm {
 	struct wps_context *wps;
 
 	int prev_failure;
-
-	struct ext_password_data *ext_pw;
-	struct wpabuf *ext_pw_buf;
 };
 
 const u8 * eap_get_config_identity(struct eap_sm *sm, size_t *len);

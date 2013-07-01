@@ -2,8 +2,14 @@
  * Crypto wrapper for internal crypto implementation - RSA parts
  * Copyright (c) 2006-2009, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -11,6 +17,7 @@
 #include "common.h"
 #include "crypto.h"
 #include "tls/rsa.h"
+#include "tls/bignum.h"
 #include "tls/pkcs1.h"
 #include "tls/pkcs8.h"
 

@@ -1,9 +1,14 @@
 /*
  * WPA Supplicant / dbus-based control interface (P2P)
- * Copyright (c) 2011-2012, Intel Corporation
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -40,7 +45,7 @@ static int parse_peer_object_path(char *peer_path, u8 addr[ETH_ALEN])
 
 	if (!peer_path)
 		return -1;
-	p = os_strrchr(peer_path, '/');
+	p = strrchr(peer_path, '/');
 	if (!p)
 		return -1;
 	p++;
@@ -127,7 +132,7 @@ DBusMessage * wpas_dbus_handler_p2p_find(DBusMessage *message,
 	}
 
 	wpas_p2p_find(wpa_s, timeout, type, num_req_dev_types, req_dev_types,
-		      NULL, 0);
+		      NULL);
 	os_free(req_dev_types);
 	return reply;
 
@@ -346,13 +351,13 @@ DBusMessage * wpas_dbus_handler_p2p_group_add(DBusMessage *message,
 		if (ssid == NULL || ssid->disabled != 2)
 			goto inv_args;
 
-		if (wpas_p2p_group_add_persistent(wpa_s, ssid, 0, freq, 0)) {
+		if (wpas_p2p_group_add_persistent(wpa_s, ssid, 0, freq)) {
 			reply = wpas_dbus_error_unknown_error(
 				message,
 				"Failed to reinvoke a persistent group");
 			goto out;
 		}
-	} else if (wpas_p2p_group_add(wpa_s, persistent_group, freq, 0))
+	} else if (wpas_p2p_group_add(wpa_s, persistent_group, freq))
 		goto inv_args;
 
 out:
@@ -503,8 +508,8 @@ DBusMessage * wpas_dbus_handler_p2p_connect(DBusMessage *message,
 		goto inv_args;
 
 	new_pin = wpas_p2p_connect(wpa_s, addr, pin, wps_method,
-				   persistent_group, 0, join, authorize_only,
-				   go_intent, freq, -1, 0, 0);
+				   persistent_group, join, authorize_only,
+				   go_intent, freq);
 
 	if (new_pin >= 0) {
 		char npin[9];
@@ -630,7 +635,7 @@ DBusMessage * wpas_dbus_handler_p2p_invite(DBusMessage *message,
 		if (ssid == NULL || ssid->disabled != 2)
 			goto err;
 
-		if (wpas_p2p_invite(wpa_s, peer_addr, ssid, NULL, 0, 0) < 0) {
+		if (wpas_p2p_invite(wpa_s, peer_addr, ssid, NULL) < 0) {
 			reply = wpas_dbus_error_unknown_error(
 				message,
 				"Failed to reinvoke a persistent group");
@@ -687,8 +692,7 @@ DBusMessage * wpas_dbus_handler_p2p_prov_disc_req(DBusMessage *message,
 	    os_strcmp(config_method, "pushbutton"))
 		return wpas_dbus_error_invalid_args(message, NULL);
 
-	if (wpas_p2p_prov_disc(wpa_s, peer_addr, config_method,
-			       WPAS_P2P_PD_FOR_GO_NEG) < 0)
+	if (wpas_p2p_prov_disc(wpa_s, peer_addr, config_method, 0) < 0)
 		return wpas_dbus_error_unknown_error(message,
 				"Failed to send provision discovery request");
 
@@ -1049,7 +1053,7 @@ dbus_bool_t wpas_dbus_getter_p2p_peers(DBusMessageIter *iter, DBusError *error,
 	 * Now construct the peer object paths in a form suitable for
 	 * array_property_getter helper below.
 	 */
-	peer_obj_paths = os_calloc(num, sizeof(char *));
+	peer_obj_paths = os_zalloc(num * sizeof(char *));
 
 	if (!peer_obj_paths) {
 		out_of_mem = 1;
@@ -1509,7 +1513,7 @@ dbus_bool_t wpas_dbus_getter_persistent_groups(DBusMessageIter *iter,
 		if (network_is_persistent_group(ssid))
 			num++;
 
-	paths = os_calloc(num, sizeof(char *));
+	paths = os_zalloc(num * sizeof(char *));
 	if (!paths) {
 		dbus_set_error_const(error, DBUS_ERROR_NO_MEMORY, "no memory");
 		return FALSE;
@@ -1816,7 +1820,7 @@ dbus_bool_t wpas_dbus_getter_p2p_group_members(DBusMessageIter *iter,
 
 	num_members = p2p_get_group_num_members(wpa_s->p2p_group);
 
-	paths = os_calloc(num_members, sizeof(char *));
+	paths = os_zalloc(num_members * sizeof(char *));
 	if (!paths)
 		goto out_of_memory;
 
@@ -2069,7 +2073,7 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 	if (!wpa_dbus_dict_open_read(&iter, &iter_dict, NULL))
 		goto error;
 
-	while (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
+	if (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
 		if (!wpa_dbus_dict_get_entry(&iter_dict, &entry))
 			goto error;
 
@@ -2081,30 +2085,23 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 				bonjour = 1;
 			else
 				goto error_clear;
-		} else if (!os_strcmp(entry.key, "version") &&
-		           entry.type == DBUS_TYPE_INT32) {
-			version = entry.uint32_value;
-		} else if (!os_strcmp(entry.key, "service") &&
-			     (entry.type == DBUS_TYPE_STRING)) {
-			service = os_strdup(entry.str_value);
-		} else if (!os_strcmp(entry.key, "query")) {
-			if ((entry.type != DBUS_TYPE_ARRAY) ||
-			    (entry.array_type != DBUS_TYPE_BYTE))
-				goto error_clear;
-			query = wpabuf_alloc_copy(
-				entry.bytearray_value,
-				entry.array_len);
-		} else if (!os_strcmp(entry.key, "response")) {
-			if ((entry.type != DBUS_TYPE_ARRAY) ||
-			    (entry.array_type != DBUS_TYPE_BYTE))
-				goto error_clear;
-			resp = wpabuf_alloc_copy(entry.bytearray_value,
-						 entry.array_len);
+			wpa_dbus_dict_entry_clear(&entry);
 		}
-		wpa_dbus_dict_entry_clear(&entry);
 	}
 
 	if (upnp == 1) {
+		while (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
+			if (!wpa_dbus_dict_get_entry(&iter_dict, &entry))
+				goto error;
+
+			if (!os_strcmp(entry.key, "version") &&
+			    entry.type == DBUS_TYPE_INT32)
+				version = entry.uint32_value;
+			else if (!os_strcmp(entry.key, "service") &&
+				 entry.type == DBUS_TYPE_STRING)
+				service = os_strdup(entry.str_value);
+			wpa_dbus_dict_entry_clear(&entry);
+		}
 		if (version <= 0 || service == NULL)
 			goto error;
 
@@ -2112,15 +2109,37 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 			goto error;
 
 		os_free(service);
-		service = NULL;
 	} else if (bonjour == 1) {
+		while (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
+			if (!wpa_dbus_dict_get_entry(&iter_dict, &entry))
+				goto error;
+
+			if (!os_strcmp(entry.key, "query")) {
+				if ((entry.type != DBUS_TYPE_ARRAY) ||
+				    (entry.array_type != DBUS_TYPE_BYTE))
+					goto error_clear;
+				query = wpabuf_alloc_copy(
+					entry.bytearray_value,
+					entry.array_len);
+			} else if (!os_strcmp(entry.key, "response")) {
+				if ((entry.type != DBUS_TYPE_ARRAY) ||
+				    (entry.array_type != DBUS_TYPE_BYTE))
+					goto error_clear;
+				resp = wpabuf_alloc_copy(entry.bytearray_value,
+							 entry.array_len);
+			}
+
+			wpa_dbus_dict_entry_clear(&entry);
+		}
+
 		if (query == NULL || resp == NULL)
 			goto error;
 
-		if (wpas_p2p_service_add_bonjour(wpa_s, query, resp) < 0)
+		if (wpas_p2p_service_add_bonjour(wpa_s, query, resp) < 0) {
+			wpabuf_free(query);
+			wpabuf_free(resp);
 			goto error;
-		query = NULL;
-		resp = NULL;
+		}
 	} else
 		goto error;
 
@@ -2128,9 +2147,6 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 error_clear:
 	wpa_dbus_dict_entry_clear(&entry);
 error:
-	os_free(service);
-	wpabuf_free(query);
-	wpabuf_free(resp);
 	return wpas_dbus_error_invalid_args(message, NULL);
 }
 
@@ -2300,11 +2316,13 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 		if (version <= 0 || service == NULL)
 			goto error;
 
-		ref = wpas_p2p_sd_request_upnp(wpa_s, addr, version, service);
+		ref = (unsigned long) wpas_p2p_sd_request_upnp(wpa_s, addr,
+							       version,
+							       service);
 	} else {
 		if (tlv == NULL)
 			goto error;
-		ref = wpas_p2p_sd_request(wpa_s, addr, tlv);
+		ref = (unsigned long)wpas_p2p_sd_request(wpa_s, addr, tlv);
 		wpabuf_free(tlv);
 	}
 
@@ -2405,7 +2423,7 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_cancel_req(
 	if (req == 0)
 		goto error;
 
-	if (!wpas_p2p_sd_cancel_request(wpa_s, req))
+	if (!wpas_p2p_sd_cancel_request(wpa_s, (void *)(unsigned long) req))
 		goto error;
 
 	return NULL;

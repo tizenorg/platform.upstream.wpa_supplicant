@@ -2,8 +2,14 @@
  * Command line editing and history
  * Copyright (c) 2010-2011, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -20,7 +26,6 @@ static int cmdbuf_pos = 0;
 static int cmdbuf_len = 0;
 static char currbuf[CMD_BUF_LEN];
 static int currbuf_valid = 0;
-static const char *ps2 = NULL;
 
 #define HISTORY_MAX 100
 
@@ -48,7 +53,7 @@ void edit_clear_line(void)
 {
 	int i;
 	putchar('\r');
-	for (i = 0; i < cmdbuf_len + 2 + (ps2 ? (int) os_strlen(ps2) : 0); i++)
+	for (i = 0; i < cmdbuf_len + 2; i++)
 		putchar(' ');
 }
 
@@ -347,7 +352,7 @@ static void process_cmd(void)
 {
 
 	if (cmdbuf_len == 0) {
-		printf("\n%s> ", ps2 ? ps2 : "");
+		printf("\n> ");
 		fflush(stdout);
 		return;
 	}
@@ -357,7 +362,7 @@ static void process_cmd(void)
 	cmdbuf_pos = 0;
 	cmdbuf_len = 0;
 	edit_cmd_cb(edit_cb_ctx, cmdbuf);
-	printf("%s> ", ps2 ? ps2 : "");
+	printf("> ");
 	fflush(stdout);
 }
 
@@ -1113,7 +1118,7 @@ static void edit_read_char(int sock, void *eloop_ctx, void *sock_ctx)
 int edit_init(void (*cmd_cb)(void *ctx, char *cmd),
 	      void (*eof_cb)(void *ctx),
 	      char ** (*completion_cb)(void *ctx, const char *cmd, int pos),
-	      void *ctx, const char *history_file, const char *ps)
+	      void *ctx, const char *history_file)
 {
 	currbuf[0] = '\0';
 	dl_list_init(&history_list);
@@ -1133,8 +1138,7 @@ int edit_init(void (*cmd_cb)(void *ctx, char *cmd),
 
 	eloop_register_read_sock(STDIN_FILENO, edit_read_char, NULL, NULL);
 
-	ps2 = ps;
-	printf("%s> ", ps2 ? ps2 : "");
+	printf("> ");
 	fflush(stdout);
 
 	return 0;
@@ -1163,11 +1167,11 @@ void edit_redraw(void)
 {
 	char tmp;
 	cmdbuf[cmdbuf_len] = '\0';
-	printf("\r%s> %s", ps2 ? ps2 : "", cmdbuf);
+	printf("\r> %s", cmdbuf);
 	if (cmdbuf_pos != cmdbuf_len) {
 		tmp = cmdbuf[cmdbuf_pos];
 		cmdbuf[cmdbuf_pos] = '\0';
-		printf("\r%s> %s", ps2 ? ps2 : "", cmdbuf);
+		printf("\r> %s", cmdbuf);
 		cmdbuf[cmdbuf_pos] = tmp;
 	}
 	fflush(stdout);

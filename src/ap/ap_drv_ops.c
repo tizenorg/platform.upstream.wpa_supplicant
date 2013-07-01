@@ -2,8 +2,14 @@
  * hostapd - Driver operations
  * Copyright (c) 2009-2010, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "utils/includes.h"
@@ -12,13 +18,11 @@
 #include "drivers/driver.h"
 #include "common/ieee802_11_defs.h"
 #include "wps/wps.h"
-#include "p2p/p2p.h"
 #include "hostapd.h"
 #include "ieee802_11.h"
 #include "sta_info.h"
 #include "ap_config.h"
 #include "p2p_hostapd.h"
-#include "hs20.h"
 #include "ap_drv_ops.h"
 
 
@@ -148,30 +152,6 @@ int hostapd_build_ap_extra_ies(struct hostapd_data *hapd,
 		}
 	}
 #endif /* CONFIG_P2P_MANAGER */
-
-#ifdef CONFIG_WIFI_DISPLAY
-	if (hapd->p2p_group) {
-		struct wpabuf *a;
-		a = p2p_group_assoc_resp_ie(hapd->p2p_group, P2P_SC_SUCCESS);
-		if (a && wpabuf_resize(&assocresp, wpabuf_len(a)) == 0)
-			wpabuf_put_buf(assocresp, a);
-		wpabuf_free(a);
-	}
-#endif /* CONFIG_WIFI_DISPLAY */
-
-#ifdef CONFIG_HS20
-	pos = buf;
-	pos = hostapd_eid_hs20_indication(hapd, pos);
-	if (pos != buf) {
-		if (wpabuf_resize(&beacon, pos - buf) != 0)
-			goto fail;
-		wpabuf_put_data(beacon, buf, pos - buf);
-
-		if (wpabuf_resize(&proberesp, pos - buf) != 0)
-			goto fail;
-		wpabuf_put_data(proberesp, buf, pos - buf);
-	}
-#endif /* CONFIG_HS20 */
 
 	*beacon_ret = beacon;
 	*proberesp_ret = proberesp;
@@ -338,7 +318,7 @@ int hostapd_sta_add(struct hostapd_data *hapd,
 		    const u8 *supp_rates, size_t supp_rates_len,
 		    u16 listen_interval,
 		    const struct ieee80211_ht_capabilities *ht_capab,
-		    u32 flags, u8 qosinfo)
+		    u32 flags)
 {
 	struct hostapd_sta_add_params params;
 
@@ -356,7 +336,6 @@ int hostapd_sta_add(struct hostapd_data *hapd,
 	params.listen_interval = listen_interval;
 	params.ht_capabilities = ht_capab;
 	params.flags = hostapd_sta_flags_to_drv(flags);
-	params.qosinfo = qosinfo;
 	return hapd->driver->sta_add(hapd->drv_priv, &params);
 }
 
@@ -496,6 +475,16 @@ int hostapd_sta_set_flags(struct hostapd_data *hapd, u8 *addr,
 }
 
 
+int hostapd_set_rate_sets(struct hostapd_data *hapd, int *supp_rates,
+			  int *basic_rates, int mode)
+{
+	if (hapd->driver == NULL || hapd->driver->set_rate_sets == NULL)
+		return 0;
+	return hapd->driver->set_rate_sets(hapd->drv_priv, supp_rates,
+					   basic_rates, mode);
+}
+
+
 int hostapd_set_country(struct hostapd_data *hapd, const char *country)
 {
 	if (hapd->driver == NULL ||
@@ -584,11 +573,11 @@ int hostapd_drv_set_key(const char *ifname, struct hostapd_data *hapd,
 
 
 int hostapd_drv_send_mlme(struct hostapd_data *hapd,
-			  const void *msg, size_t len, int noack)
+			  const void *msg, size_t len)
 {
 	if (hapd->driver == NULL || hapd->driver->send_mlme == NULL)
 		return 0;
-	return hapd->driver->send_mlme(hapd->drv_priv, msg, len, noack);
+	return hapd->driver->send_mlme(hapd->drv_priv, msg, len);
 }
 
 
@@ -609,26 +598,4 @@ int hostapd_drv_sta_disassoc(struct hostapd_data *hapd,
 		return 0;
 	return hapd->driver->sta_disassoc(hapd->drv_priv, hapd->own_addr, addr,
 					  reason);
-}
-
-
-int hostapd_drv_wnm_oper(struct hostapd_data *hapd, enum wnm_oper oper,
-			 const u8 *peer, u8 *buf, u16 *buf_len)
-{
-	if (hapd->driver == NULL || hapd->driver->wnm_oper == NULL)
-		return 0;
-	return hapd->driver->wnm_oper(hapd->drv_priv, oper, peer, buf,
-				      buf_len);
-}
-
-
-int hostapd_drv_send_action(struct hostapd_data *hapd, unsigned int freq,
-			    unsigned int wait, const u8 *dst, const u8 *data,
-			    size_t len)
-{
-	if (hapd->driver == NULL || hapd->driver->send_action == NULL)
-		return 0;
-	return hapd->driver->send_action(hapd->drv_priv, freq, wait, dst,
-					 hapd->own_addr, hapd->own_addr, data,
-					 len, 0);
 }

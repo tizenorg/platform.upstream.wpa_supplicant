@@ -188,7 +188,6 @@ void event_send_stop_all(struct upnp_wps_device_sm *sm);
 int upnp_er_set_selected_registrar(struct wps_registrar *reg,
 				   struct subscription *s,
 				   const struct wpabuf *msg);
-void upnp_er_remove_notification(struct wps_registrar *reg,
-				 struct subscription *s);
+void upnp_er_remove_notification(struct subscription *s);
 
 #endif /* WPS_UPNP_I_H */

@@ -2,8 +2,14 @@
  * Netlink helper functions for driver wrappers
  * Copyright (c) 2002-2009, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -97,6 +103,8 @@ struct netlink_data * netlink_init(struct netlink_config *cfg)
 	if (netlink == NULL)
 		return NULL;
 
+	netlink->cfg = cfg;
+
 	netlink->sock = socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (netlink->sock < 0) {
 		wpa_printf(MSG_ERROR, "netlink: Failed to open netlink "
@@ -118,8 +126,6 @@ struct netlink_data * netlink_init(struct netlink_config *cfg)
 
 	eloop_register_read_sock(netlink->sock, netlink_receive, netlink,
 				 NULL);
-
-	netlink->cfg = cfg;
 
 	return netlink;
 }

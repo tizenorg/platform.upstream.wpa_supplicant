@@ -2,8 +2,14 @@
  * wpa_supplicant - Internal driver interface wrappers
  * Copyright (c) 2003-2009, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef DRIVER_I_H
@@ -139,6 +145,16 @@ static inline int wpa_drv_deauthenticate(struct wpa_supplicant *wpa_s,
 	return -1;
 }
 
+static inline int wpa_drv_disassociate(struct wpa_supplicant *wpa_s,
+				       const u8 *addr, int reason_code)
+{
+	if (wpa_s->driver->disassociate) {
+		return wpa_s->driver->disassociate(wpa_s->drv_priv, addr,
+						   reason_code);
+	}
+	return -1;
+}
+
 static inline int wpa_drv_add_pmkid(struct wpa_supplicant *wpa_s,
 				    const u8 *bssid, const u8 *pmkid)
 {
@@ -246,11 +262,11 @@ static inline int wpa_drv_set_country(struct wpa_supplicant *wpa_s,
 }
 
 static inline int wpa_drv_send_mlme(struct wpa_supplicant *wpa_s,
-				    const u8 *data, size_t data_len, int noack)
+				    const u8 *data, size_t data_len)
 {
 	if (wpa_s->driver->send_mlme)
 		return wpa_s->driver->send_mlme(wpa_s->drv_priv,
-						data, data_len, noack);
+						data, data_len);
 	return -1;
 }
 
@@ -453,15 +469,6 @@ static inline int wpa_drv_signal_poll(struct wpa_supplicant *wpa_s,
 	return -1;
 }
 
-static inline int wpa_drv_pktcnt_poll(struct wpa_supplicant *wpa_s,
-				      struct hostap_sta_driver_data *sta)
-{
-	if (wpa_s->driver->read_sta_data)
-		return wpa_s->driver->read_sta_data(wpa_s->drv_priv, sta,
-						    wpa_s->bssid);
-	return -1;
-}
-
 static inline int wpa_drv_set_ap_wps_ie(struct wpa_supplicant *wpa_s,
 					const struct wpabuf *beacon,
 					const struct wpabuf *proberesp,
@@ -661,32 +668,6 @@ static inline void wpa_drv_set_rekey_info(struct wpa_supplicant *wpa_s,
 	if (!wpa_s->driver->set_rekey_info)
 		return;
 	wpa_s->driver->set_rekey_info(wpa_s->drv_priv, kek, kck, replay_ctr);
-}
-
-static inline int wpa_drv_radio_disable(struct wpa_supplicant *wpa_s,
-					int disabled)
-{
-	if (!wpa_s->driver->radio_disable)
-		return -1;
-	return wpa_s->driver->radio_disable(wpa_s->drv_priv, disabled);
-}
-
-static inline int wpa_drv_switch_channel(struct wpa_supplicant *wpa_s,
-					 unsigned int freq)
-{
-	if (!wpa_s->driver->switch_channel)
-		return -1;
-	return wpa_s->driver->switch_channel(wpa_s->drv_priv, freq);
-}
-
-static inline int wpa_drv_wnm_oper(struct wpa_supplicant *wpa_s,
-				   enum wnm_oper oper, const u8 *peer,
-				   u8 *buf, u16 *buf_len)
-{
-	if (!wpa_s->driver->wnm_oper)
-		return -1;
-	return wpa_s->driver->wnm_oper(wpa_s->drv_priv, oper, peer, buf,
-				       buf_len);
 }
 
 #endif /* DRIVER_I_H */

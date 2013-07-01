@@ -2,16 +2,24 @@
  * wpa_gui - WpaGui class
  * Copyright (c) 2005-2011, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
+
+/* Need to get getopt() */
+#include <unistd.h>
 
 #ifdef CONFIG_NATIVE_WINDOWS
 #include <windows.h>
 #endif /* CONFIG_NATIVE_WINDOWS */
 
 #include <cstdio>
-#include <unistd.h>
 #include <QMessageBox>
 #include <QCloseEvent>
 #include <QImageReader>
@@ -709,13 +717,17 @@ void WpaGui::helpContents()
 void WpaGui::helpAbout()
 {
 	QMessageBox::about(this, "wpa_gui for wpa_supplicant",
-			   "Copyright (c) 2003-2012,\n"
+			   "Copyright (c) 2003-2011,\n"
 			   "Jouni Malinen <j@w1.fi>\n"
 			   "and contributors.\n"
 			   "\n"
-			   "This software may be distributed under\n"
-			   "the terms of the BSD license.\n"
-			   "See README for more details.\n"
+			   "This program is free software. You can\n"
+			   "distribute it and/or modify it under the terms "
+			   "of\n"
+			   "the GNU General Public License version 2.\n"
+			   "\n"
+			   "Alternatively, this software may be distributed\n"
+			   "under the terms of the BSD license.\n"
 			   "\n"
 			   "This product includes software developed\n"
 			   "by the OpenSSL Project for use in the\n"

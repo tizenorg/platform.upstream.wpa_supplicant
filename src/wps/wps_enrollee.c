@@ -2,8 +2,14 @@
  * Wi-Fi Protected Setup - Enrollee
  * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -163,8 +169,7 @@ static struct wpabuf * wps_build_m1(struct wps_data *wps)
 	    wps_build_dev_password_id(msg, wps->dev_pw_id) ||
 	    wps_build_config_error(msg, WPS_CFG_NO_ERROR) ||
 	    wps_build_os_version(&wps->wps->dev, msg) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0) ||
-	    wps_build_vendor_ext_m1(&wps->wps->dev, msg)) {
+	    wps_build_wfa_ext(msg, 0, NULL, 0)) {
 		wpabuf_free(msg);
 		return NULL;
 	}
@@ -523,6 +528,23 @@ static int wps_process_pubkey(struct wps_data *wps, const u8 *pk,
 		return -1;
 	}
 
+#ifdef CONFIG_WPS_OOB
+	if (wps->dev_pw_id != DEV_PW_DEFAULT &&
+	    wps->wps->oob_conf.pubkey_hash) {
+		const u8 *addr[1];
+		u8 hash[WPS_HASH_LEN];
+
+		addr[0] = pk;
+		sha256_vector(1, addr, &pk_len, hash);
+		if (os_memcmp(hash,
+			      wpabuf_head(wps->wps->oob_conf.pubkey_hash),
+			      WPS_OOB_PUBKEY_HASH_LEN) != 0) {
+			wpa_printf(MSG_ERROR, "WPS: Public Key hash error");
+			return -1;
+		}
+	}
+#endif /* CONFIG_WPS_OOB */
+
 	wpabuf_free(wps->dh_pubkey_r);
 	wps->dh_pubkey_r = wpabuf_alloc_copy(pk, pk_len);
 	if (wps->dh_pubkey_r == NULL)
@@ -648,7 +670,6 @@ static int wps_process_cred_e(struct wps_data *wps, const u8 *cred,
 {
 	struct wps_parse_attr attr;
 	struct wpabuf msg;
-	int ret = 0;
 
 	wpa_printf(MSG_DEBUG, "WPS: Received Credential");
 	os_memset(&wps->cred, 0, sizeof(wps->cred));
@@ -698,12 +719,12 @@ static int wps_process_cred_e(struct wps_data *wps, const u8 *cred,
 	if (wps->wps->cred_cb) {
 		wps->cred.cred_attr = cred - 4;
 		wps->cred.cred_attr_len = cred_len + 4;
-		ret = wps->wps->cred_cb(wps->wps->cb_ctx, &wps->cred);
+		wps->wps->cred_cb(wps->wps->cb_ctx, &wps->cred);
 		wps->cred.cred_attr = NULL;
 		wps->cred.cred_attr_len = 0;
 	}
 
-	return ret;
+	return 0;
 }
 
 
@@ -973,7 +994,7 @@ static enum wps_process_res wps_process_m4(struct wps_data *wps,
 		return WPS_CONTINUE;
 	}
 
-	if (wps_validate_m4_encr(decrypted, attr->version2 != NULL) < 0) {
+	if (wps_validate_m4_encr(decrypted, attr->version2 != 0) < 0) {
 		wpabuf_free(decrypted);
 		wps->state = SEND_WSC_NACK;
 		return WPS_CONTINUE;
@@ -1026,7 +1047,7 @@ static enum wps_process_res wps_process_m6(struct wps_data *wps,
 		return WPS_CONTINUE;
 	}
 
-	if (wps_validate_m6_encr(decrypted, attr->version2 != NULL) < 0) {
+	if (wps_validate_m6_encr(decrypted, attr->version2 != 0) < 0) {
 		wpabuf_free(decrypted);
 		wps->state = SEND_WSC_NACK;
 		return WPS_CONTINUE;
@@ -1096,8 +1117,8 @@ static enum wps_process_res wps_process_m8(struct wps_data *wps,
 		return WPS_CONTINUE;
 	}
 
-	if (wps_validate_m8_encr(decrypted, wps->wps->ap,
-				 attr->version2 != NULL) < 0) {
+	if (wps_validate_m8_encr(decrypted, wps->wps->ap, attr->version2 != 0)
+	    < 0) {
 		wpabuf_free(decrypted);
 		wps->state = SEND_WSC_NACK;
 		return WPS_CONTINUE;
@@ -1134,7 +1155,7 @@ static enum wps_process_res wps_process_wsc_msg(struct wps_data *wps,
 		return WPS_FAILURE;
 
 	if (attr.enrollee_nonce == NULL ||
-	    os_memcmp(wps->nonce_e, attr.enrollee_nonce, WPS_NONCE_LEN) != 0) {
+	    os_memcmp(wps->nonce_e, attr.enrollee_nonce, WPS_NONCE_LEN != 0)) {
 		wpa_printf(MSG_DEBUG, "WPS: Mismatch in enrollee nonce");
 		return WPS_FAILURE;
 	}
@@ -1226,14 +1247,14 @@ static enum wps_process_res wps_process_wsc_ack(struct wps_data *wps,
 	}
 
 	if (attr.registrar_nonce == NULL ||
-	    os_memcmp(wps->nonce_r, attr.registrar_nonce, WPS_NONCE_LEN) != 0)
+	    os_memcmp(wps->nonce_r, attr.registrar_nonce, WPS_NONCE_LEN != 0))
 	{
 		wpa_printf(MSG_DEBUG, "WPS: Mismatch in registrar nonce");
 		return WPS_FAILURE;
 	}
 
 	if (attr.enrollee_nonce == NULL ||
-	    os_memcmp(wps->nonce_e, attr.enrollee_nonce, WPS_NONCE_LEN) != 0) {
+	    os_memcmp(wps->nonce_e, attr.enrollee_nonce, WPS_NONCE_LEN != 0)) {
 		wpa_printf(MSG_DEBUG, "WPS: Mismatch in enrollee nonce");
 		return WPS_FAILURE;
 	}
@@ -1273,7 +1294,7 @@ static enum wps_process_res wps_process_wsc_nack(struct wps_data *wps,
 	}
 
 	if (attr.registrar_nonce == NULL ||
-	    os_memcmp(wps->nonce_r, attr.registrar_nonce, WPS_NONCE_LEN) != 0)
+	    os_memcmp(wps->nonce_r, attr.registrar_nonce, WPS_NONCE_LEN != 0))
 	{
 		wpa_printf(MSG_DEBUG, "WPS: Mismatch in registrar nonce");
 		wpa_hexdump(MSG_DEBUG, "WPS: Received Registrar Nonce",
@@ -1284,7 +1305,7 @@ static enum wps_process_res wps_process_wsc_nack(struct wps_data *wps,
 	}
 
 	if (attr.enrollee_nonce == NULL ||
-	    os_memcmp(wps->nonce_e, attr.enrollee_nonce, WPS_NONCE_LEN) != 0) {
+	    os_memcmp(wps->nonce_e, attr.enrollee_nonce, WPS_NONCE_LEN != 0)) {
 		wpa_printf(MSG_DEBUG, "WPS: Mismatch in enrollee nonce");
 		wpa_hexdump(MSG_DEBUG, "WPS: Received Enrollee Nonce",
 			    attr.enrollee_nonce, WPS_NONCE_LEN);

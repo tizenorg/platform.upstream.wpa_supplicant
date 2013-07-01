@@ -411,10 +411,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\crypto\sha1-prf.c"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\src\crypto\sha1-tlsprf.c"
 				>
 			</File>

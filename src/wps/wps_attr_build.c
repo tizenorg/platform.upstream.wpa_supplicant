@@ -2,8 +2,14 @@
  * Wi-Fi Protected Setup - attribute building
  * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -30,14 +36,6 @@ int wps_build_public_key(struct wps_data *wps, struct wpabuf *msg)
 		wps->dh_ctx = wps->wps->dh_ctx;
 		wps->wps->dh_ctx = NULL;
 		pubkey = wpabuf_dup(wps->wps->dh_pubkey);
-#ifdef CONFIG_WPS_NFC
-	} else if (wps->dev_pw_id >= 0x10 && wps->wps->ap &&
-		   wps->dev_pw_id == wps->wps->ap_nfc_dev_pw_id) {
-		wpa_printf(MSG_DEBUG, "WPS: Using NFC password token DH keys");
-		wps->dh_privkey = wpabuf_dup(wps->wps->ap_nfc_dh_privkey);
-		pubkey = wpabuf_dup(wps->wps->ap_nfc_dh_pubkey);
-		wps->dh_ctx = dh5_init_fixed(wps->dh_privkey, pubkey);
-#endif /* CONFIG_WPS_NFC */
 	} else {
 		wpa_printf(MSG_DEBUG, "WPS: Generate new DH keys");
 		wps->dh_privkey = NULL;
@@ -348,23 +346,44 @@ int wps_build_encr_settings(struct wps_data *wps, struct wpabuf *msg,
 
 
 #ifdef CONFIG_WPS_OOB
-int wps_build_oob_dev_pw(struct wpabuf *msg, u16 dev_pw_id,
-			 const struct wpabuf *pubkey, const u8 *dev_pw,
-			 size_t dev_pw_len)
+int wps_build_oob_dev_password(struct wpabuf *msg, struct wps_context *wps)
 {
 	size_t hash_len;
 	const u8 *addr[1];
 	u8 pubkey_hash[WPS_HASH_LEN];
+	u8 dev_password_bin[WPS_OOB_DEVICE_PASSWORD_LEN];
 
-	addr[0] = wpabuf_head(pubkey);
-	hash_len = wpabuf_len(pubkey);
+	wpa_printf(MSG_DEBUG, "WPS:  * OOB Device Password");
+
+	addr[0] = wpabuf_head(wps->dh_pubkey);
+	hash_len = wpabuf_len(wps->dh_pubkey);
 	sha256_vector(1, addr, &hash_len, pubkey_hash);
 
+	if (os_get_random((u8 *) &wps->oob_dev_pw_id, sizeof(u16)) < 0) {
+		wpa_printf(MSG_ERROR, "WPS: device password id "
+			   "generation error");
+		return -1;
+	}
+	wps->oob_dev_pw_id |= 0x0010;
+
+	if (random_get_bytes(dev_password_bin, WPS_OOB_DEVICE_PASSWORD_LEN) <
+	    0) {
+		wpa_printf(MSG_ERROR, "WPS: OOB device password "
+			   "generation error");
+		return -1;
+	}
+
 	wpabuf_put_be16(msg, ATTR_OOB_DEVICE_PASSWORD);
-	wpabuf_put_be16(msg, WPS_OOB_PUBKEY_HASH_LEN + 2 + dev_pw_len);
+	wpabuf_put_be16(msg, WPS_OOB_DEVICE_PASSWORD_ATTR_LEN);
 	wpabuf_put_data(msg, pubkey_hash, WPS_OOB_PUBKEY_HASH_LEN);
-	wpabuf_put_be16(msg, dev_pw_id);
-	wpabuf_put_data(msg, dev_pw, dev_pw_len);
+	wpabuf_put_be16(msg, wps->oob_dev_pw_id);
+	wpabuf_put_data(msg, dev_password_bin, WPS_OOB_DEVICE_PASSWORD_LEN);
+
+	wpa_snprintf_hex_uppercase(
+		wpabuf_put(wps->oob_conf.dev_password,
+			   wpabuf_size(wps->oob_conf.dev_password)),
+		wpabuf_size(wps->oob_conf.dev_password),
+		dev_password_bin, WPS_OOB_DEVICE_PASSWORD_LEN);
 
 	return 0;
 }

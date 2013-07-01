@@ -2,8 +2,14 @@
  * WPA Supplicant / Configuration backend: Windows registry
  * Copyright (c) 2003-2008, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  *
  * This file implements a configuration backend for Windows registry. All the
  * configuration information is stored in the registry and the format for
@@ -202,7 +208,6 @@ static int wpa_config_read_global_os_version(struct wpa_config *config,
 static int wpa_config_read_global(struct wpa_config *config, HKEY hk)
 {
 	int errors = 0;
-	int val;
 
 	wpa_config_read_reg_dword(hk, TEXT("ap_scan"), &config->ap_scan);
 	wpa_config_read_reg_dword(hk, TEXT("fast_reauth"),
@@ -271,10 +276,6 @@ static int wpa_config_read_global(struct wpa_config *config, HKEY hk)
 				  (int *) &config->max_num_sta);
 	wpa_config_read_reg_dword(hk, TEXT("disassoc_low_ack"),
 				  (int *) &config->disassoc_low_ack);
-
-	wpa_config_read_reg_dword(hk, TEXT("okc"), &config->okc);
-	wpa_config_read_reg_dword(hk, TEXT("pmf"), &val);
-	config->pmf = val;
 
 	return errors ? -1 : 0;
 }
@@ -347,6 +348,15 @@ static struct wpa_ssid * wpa_config_read_network(HKEY hk, const TCHAR *netw,
 			errors++;
 		}
 		wpa_config_update_psk(ssid);
+	}
+
+	if ((ssid->key_mgmt & (WPA_KEY_MGMT_PSK | WPA_KEY_MGMT_FT_PSK |
+			       WPA_KEY_MGMT_PSK_SHA256)) &&
+	    !ssid->psk_set) {
+		wpa_printf(MSG_ERROR, "WPA-PSK accepted for key management, "
+			   "but no PSK configured for network '" TSTR "'.",
+			   netw);
+		errors++;
 	}
 
 	if ((ssid->group_cipher & WPA_CIPHER_CCMP) &&
@@ -613,9 +623,6 @@ static int wpa_config_write_global(struct wpa_config *config, HKEY hk)
 				   config->max_num_sta, DEFAULT_MAX_NUM_STA);
 	wpa_config_write_reg_dword(hk, TEXT("disassoc_low_ack"),
 				   config->disassoc_low_ack, 0);
-
-	wpa_config_write_reg_dword(hk, TEXT("okc"), config->okc, 0);
-	wpa_config_write_reg_dword(hk, TEXT("pmf"), config->pmf, 0);
 
 	return 0;
 }
@@ -912,13 +919,11 @@ static int wpa_config_write_network(HKEY hk, struct wpa_ssid *ssid, int id)
 	INT_DEFe(fragment_size, DEFAULT_FRAGMENT_SIZE);
 #endif /* IEEE8021X_EAPOL */
 	INT(mode);
-	write_int(netw, "proactive_key_caching", ssid->proactive_key_caching,
-		  -1);
+	INT(proactive_key_caching);
 	INT(disabled);
 	INT(peerkey);
 #ifdef CONFIG_IEEE80211W
-	write_int(netw, "ieee80211w", ssid->ieee80211w,
-		  MGMT_FRAME_PROTECTION_DEFAULT);
+	INT(ieee80211w);
 #endif /* CONFIG_IEEE80211W */
 	STR(id_str);
 

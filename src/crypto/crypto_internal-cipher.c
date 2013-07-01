@@ -2,8 +2,14 @@
  * Crypto wrapper for internal crypto implementation - Cipher wrappers
  * Copyright (c) 2006-2009, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -24,6 +30,7 @@ struct crypto_cipher {
 		} rc4;
 		struct {
 			u8 cbc[32];
+			size_t block_size;
 			void *ctx_enc;
 			void *ctx_dec;
 		} aes;
@@ -62,6 +69,10 @@ struct crypto_cipher * crypto_cipher_init(enum crypto_cipher_alg alg,
 		os_memcpy(ctx->u.rc4.key, key, key_len);
 		break;
 	case CRYPTO_CIPHER_ALG_AES:
+		if (key_len > sizeof(ctx->u.aes.cbc)) {
+			os_free(ctx);
+			return NULL;
+		}
 		ctx->u.aes.ctx_enc = aes_encrypt_init(key, key_len);
 		if (ctx->u.aes.ctx_enc == NULL) {
 			os_free(ctx);
@@ -73,7 +84,8 @@ struct crypto_cipher * crypto_cipher_init(enum crypto_cipher_alg alg,
 			os_free(ctx);
 			return NULL;
 		}
-		os_memcpy(ctx->u.aes.cbc, iv, AES_BLOCK_SIZE);
+		ctx->u.aes.block_size = key_len;
+		os_memcpy(ctx->u.aes.cbc, iv, ctx->u.aes.block_size);
 		break;
 	case CRYPTO_CIPHER_ALG_3DES:
 		if (key_len != 24) {
@@ -114,17 +126,18 @@ int crypto_cipher_encrypt(struct crypto_cipher *ctx, const u8 *plain,
 		ctx->u.rc4.used_bytes += len;
 		break;
 	case CRYPTO_CIPHER_ALG_AES:
-		if (len % AES_BLOCK_SIZE)
+		if (len % ctx->u.aes.block_size)
 			return -1;
-		blocks = len / AES_BLOCK_SIZE;
+		blocks = len / ctx->u.aes.block_size;
 		for (i = 0; i < blocks; i++) {
-			for (j = 0; j < AES_BLOCK_SIZE; j++)
+			for (j = 0; j < ctx->u.aes.block_size; j++)
 				ctx->u.aes.cbc[j] ^= plain[j];
 			aes_encrypt(ctx->u.aes.ctx_enc, ctx->u.aes.cbc,
 				    ctx->u.aes.cbc);
-			os_memcpy(crypt, ctx->u.aes.cbc, AES_BLOCK_SIZE);
-			plain += AES_BLOCK_SIZE;
-			crypt += AES_BLOCK_SIZE;
+			os_memcpy(crypt, ctx->u.aes.cbc,
+				  ctx->u.aes.block_size);
+			plain += ctx->u.aes.block_size;
+			crypt += ctx->u.aes.block_size;
 		}
 		break;
 	case CRYPTO_CIPHER_ALG_3DES:
@@ -178,17 +191,17 @@ int crypto_cipher_decrypt(struct crypto_cipher *ctx, const u8 *crypt,
 		ctx->u.rc4.used_bytes += len;
 		break;
 	case CRYPTO_CIPHER_ALG_AES:
-		if (len % AES_BLOCK_SIZE)
+		if (len % ctx->u.aes.block_size)
 			return -1;
-		blocks = len / AES_BLOCK_SIZE;
+		blocks = len / ctx->u.aes.block_size;
 		for (i = 0; i < blocks; i++) {
-			os_memcpy(tmp, crypt, AES_BLOCK_SIZE);
+			os_memcpy(tmp, crypt, ctx->u.aes.block_size);
 			aes_decrypt(ctx->u.aes.ctx_dec, crypt, plain);
-			for (j = 0; j < AES_BLOCK_SIZE; j++)
+			for (j = 0; j < ctx->u.aes.block_size; j++)
 				plain[j] ^= ctx->u.aes.cbc[j];
-			os_memcpy(ctx->u.aes.cbc, tmp, AES_BLOCK_SIZE);
-			plain += AES_BLOCK_SIZE;
-			crypt += AES_BLOCK_SIZE;
+			os_memcpy(ctx->u.aes.cbc, tmp, ctx->u.aes.block_size);
+			plain += ctx->u.aes.block_size;
+			crypt += ctx->u.aes.block_size;
 		}
 		break;
 	case CRYPTO_CIPHER_ALG_3DES:

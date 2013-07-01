@@ -1,9 +1,15 @@
 /*
- * TLSv1 common definitions
+ * TLS v1.0 (RFC 2246) and v1.1 (RFC 4346) common definitions
  * Copyright (c) 2006-2011, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef TLSV1_COMMON_H
@@ -13,16 +19,11 @@
 
 #define TLS_VERSION_1 0x0301 /* TLSv1 */
 #define TLS_VERSION_1_1 0x0302 /* TLSv1.1 */
-#define TLS_VERSION_1_2 0x0303 /* TLSv1.2 */
-#ifdef CONFIG_TLSV12
-#define TLS_VERSION TLS_VERSION_1_2
-#else /* CONFIG_TLSV12 */
 #ifdef CONFIG_TLSV11
 #define TLS_VERSION TLS_VERSION_1_1
 #else /* CONFIG_TLSV11 */
 #define TLS_VERSION TLS_VERSION_1
 #endif /* CONFIG_TLSV11 */
-#endif /* CONFIG_TLSV12 */
 #define TLS_RANDOM_LEN 32
 #define TLS_PRE_MASTER_SECRET_LEN 48
 #define TLS_MASTER_SECRET_LEN 48
@@ -87,41 +88,9 @@ enum {
 #define TLS_DHE_DSS_WITH_AES_256_CBC_SHA	0x0038 /* RFC 3268 */
 #define TLS_DHE_RSA_WITH_AES_256_CBC_SHA	0x0039 /* RFC 3268 */
 #define TLS_DH_anon_WITH_AES_256_CBC_SHA	0x003A /* RFC 3268 */
-#define TLS_RSA_WITH_NULL_SHA256		0x003B /* RFC 5246 */
-#define TLS_RSA_WITH_AES_128_CBC_SHA256		0x003C /* RFC 5246 */
-#define TLS_RSA_WITH_AES_256_CBC_SHA256		0x003D /* RFC 5246 */
-#define TLS_DH_DSS_WITH_AES_128_CBC_SHA256	0x003E /* RFC 5246 */
-#define TLS_DH_RSA_WITH_AES_128_CBC_SHA256	0x003F /* RFC 5246 */
-#define TLS_DHE_DSS_WITH_AES_128_CBC_SHA256	0x0040 /* RFC 5246 */
-#define TLS_DHE_RSA_WITH_AES_128_CBC_SHA256	0x0067 /* RFC 5246 */
-#define TLS_DH_DSS_WITH_AES_256_CBC_SHA256	0x0068 /* RFC 5246 */
-#define TLS_DH_RSA_WITH_AES_256_CBC_SHA256	0x0069 /* RFC 5246 */
-#define TLS_DHE_DSS_WITH_AES_256_CBC_SHA256	0x006A /* RFC 5246 */
-#define TLS_DHE_RSA_WITH_AES_256_CBC_SHA256	0x006B /* RFC 5246 */
-#define TLS_DH_anon_WITH_AES_128_CBC_SHA256	0x006C /* RFC 5246 */
-#define TLS_DH_anon_WITH_AES_256_CBC_SHA256	0x006D /* RFC 5246 */
 
 /* CompressionMethod */
 #define TLS_COMPRESSION_NULL 0
-
-/* HashAlgorithm */
-enum {
-	TLS_HASH_ALG_NONE = 0,
-	TLS_HASH_ALG_MD5 = 1,
-	TLS_HASH_ALG_SHA1 = 2,
-	TLS_HASH_ALG_SHA224 = 3,
-	TLS_HASH_ALG_SHA256 = 4,
-	TLS_HASH_ALG_SHA384 = 5,
-	TLS_HASH_ALG_SHA512 = 6
-};
-
-/* SignatureAlgorithm */
-enum {
-	TLS_SIGN_ALG_ANONYMOUS = 0,
-	TLS_SIGN_ALG_RSA = 1,
-	TLS_SIGN_ALG_DSA = 2,
-	TLS_SIGN_ALG_ECDSA = 3,
-};
 
 /* AlertLevel */
 #define TLS_ALERT_LEVEL_WARNING 1
@@ -206,8 +175,7 @@ typedef enum {
 typedef enum {
 	TLS_HASH_NULL,
 	TLS_HASH_MD5,
-	TLS_HASH_SHA,
-	TLS_HASH_SHA256
+	TLS_HASH_SHA
 } tls_hash;
 
 struct tls_cipher_suite {
@@ -235,13 +203,10 @@ struct tls_cipher_data {
 struct tls_verify_hash {
 	struct crypto_hash *md5_client;
 	struct crypto_hash *sha1_client;
-	struct crypto_hash *sha256_client;
 	struct crypto_hash *md5_server;
 	struct crypto_hash *sha1_server;
-	struct crypto_hash *sha256_server;
 	struct crypto_hash *md5_cert;
 	struct crypto_hash *sha1_cert;
-	struct crypto_hash *sha256_cert;
 };
 
 
@@ -253,9 +218,5 @@ int tls_verify_hash_init(struct tls_verify_hash *verify);
 void tls_verify_hash_add(struct tls_verify_hash *verify, const u8 *buf,
 			 size_t len);
 void tls_verify_hash_free(struct tls_verify_hash *verify);
-int tls_version_ok(u16 ver);
-const char * tls_version_str(u16 ver);
-int tls_prf(u16 ver, const u8 *secret, size_t secret_len, const char *label,
-	    const u8 *seed, size_t seed_len, u8 *out, size_t outlen);
 
 #endif /* TLSV1_COMMON_H */

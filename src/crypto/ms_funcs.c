@@ -1,9 +1,15 @@
 /*
  * WPA Supplicant / shared MSCHAPV2 helper functions / RFC 2433 / RFC 2759
- * Copyright (c) 2004-2012, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2004-2009, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -173,9 +179,8 @@ int generate_nt_response(const u8 *auth_challenge, const u8 *peer_challenge,
 	u8 challenge[8];
 	u8 password_hash[16];
 
-	if (challenge_hash(peer_challenge, auth_challenge, username,
-			   username_len, challenge))
-		return -1;
+	challenge_hash(peer_challenge, auth_challenge, username, username_len,
+		       challenge);
 	if (nt_password_hash(password, password_len, password_hash))
 		return -1;
 	challenge_response(challenge, password_hash, response);
@@ -261,9 +266,8 @@ int generate_authenticator_response_pwhash(
 	if (sha1_vector(3, addr1, len1, response))
 		return -1;
 
-	if (challenge_hash(peer_challenge, auth_challenge, username,
-			   username_len, challenge))
-		return -1;
+	challenge_hash(peer_challenge, auth_challenge, username, username_len,
+		       challenge);
 	return sha1_vector(3, addr2, len2, response);
 }
 

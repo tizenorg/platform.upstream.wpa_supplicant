@@ -2,8 +2,14 @@
  * EAP server/peer: Shared EAP definitions
  * Copyright (c) 2004-2007, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef EAP_DEFS_H
@@ -60,7 +66,7 @@ typedef enum {
 	EAP_TYPE_PSK = 47 /* RFC 4764 */,
 	EAP_TYPE_SAKE = 48 /* RFC 4763 */,
 	EAP_TYPE_IKEV2 = 49 /* RFC 5106 */,
-	EAP_TYPE_AKA_PRIME = 50 /* RFC 5448 */,
+	EAP_TYPE_AKA_PRIME = 50 /* draft-arkko-eap-aka-kdf-10.txt */,
 	EAP_TYPE_GPSK = 51 /* RFC 5433 */,
 	EAP_TYPE_PWD = 52 /* RFC 5931 */,
 	EAP_TYPE_EXPANDED = 254 /* RFC 3748 */
@@ -71,12 +77,8 @@ typedef enum {
 enum {
 	EAP_VENDOR_IETF = 0,
 	EAP_VENDOR_MICROSOFT = 0x000137 /* Microsoft */,
-	EAP_VENDOR_WFA = 0x00372A /* Wi-Fi Alliance */,
-	EAP_VENDOR_HOSTAP = 39068 /* hostapd/wpa_supplicant project */
+	EAP_VENDOR_WFA = 0x00372A /* Wi-Fi Alliance */
 };
-
-#define EAP_VENDOR_UNAUTH_TLS EAP_VENDOR_HOSTAP
-#define EAP_VENDOR_TYPE_UNAUTH_TLS 1
 
 #define EAP_MSK_LEN 64
 #define EAP_EMSK_LEN 64

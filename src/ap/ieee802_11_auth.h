@@ -2,8 +2,14 @@
  * hostapd / IEEE 802.11 authentication (ACL)
  * Copyright (c) 2003-2005, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef IEEE802_11_AUTH_H
@@ -18,11 +24,8 @@ enum {
 
 int hostapd_allowed_address(struct hostapd_data *hapd, const u8 *addr,
 			    const u8 *msg, size_t len, u32 *session_timeout,
-			    u32 *acct_interim_interval, int *vlan_id,
-			    struct hostapd_sta_wpa_psk_short **psk,
-			    char **identity, char **radius_cui);
+			    u32 *acct_interim_interval, int *vlan_id);
 int hostapd_acl_init(struct hostapd_data *hapd);
 void hostapd_acl_deinit(struct hostapd_data *hapd);
-void hostapd_free_psk_list(struct hostapd_sta_wpa_psk_short *psk);
 
 #endif /* IEEE802_11_AUTH_H */

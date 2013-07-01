@@ -2,8 +2,14 @@
  * EAP peer method: EAP-FAST PAC file processing
  * Copyright (c) 2004-2006, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -422,12 +428,8 @@ int eap_fast_load_pac(struct eap_sm *sm, struct eap_fast_pac **pac_root,
 	if (eap_fast_init_pac_data(sm, pac_file, &rc) < 0)
 		return 0;
 
-	if (eap_fast_read_line(&rc, &pos) < 0) {
-		/* empty file - assume it is fine to overwrite */
-		eap_fast_deinit_pac_data(&rc);
-		return 0;
-	}
-	if (os_strcmp(pac_file_hdr, rc.buf) != 0)
+	if (eap_fast_read_line(&rc, &pos) < 0 ||
+	    os_strcmp(pac_file_hdr, rc.buf) != 0)
 		err = "Unrecognized header line";
 
 	while (!err && eap_fast_read_line(&rc, &pos) == 0) {

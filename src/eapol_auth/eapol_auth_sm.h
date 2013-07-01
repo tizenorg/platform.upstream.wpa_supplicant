@@ -2,8 +2,14 @@
  * IEEE 802.1X-2004 Authenticator - EAPOL state machine
  * Copyright (c) 2002-2009, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef EAPOL_AUTH_SM_H
@@ -77,8 +83,7 @@ void eapol_auth_deinit(struct eapol_authenticator *eapol);
 struct eapol_state_machine *
 eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 		 int flags, const struct wpabuf *assoc_wps_ie,
-		 const struct wpabuf *assoc_p2p_ie, void *sta_ctx,
-		 const char *identity, const char *radius_cui);
+		 const struct wpabuf *assoc_p2p_ie, void *sta_ctx);
 void eapol_auth_free(struct eapol_state_machine *sm);
 void eapol_auth_step(struct eapol_state_machine *sm);
 void eapol_auth_dump_state(FILE *f, const char *prefix,

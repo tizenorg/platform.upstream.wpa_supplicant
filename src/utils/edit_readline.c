@@ -2,8 +2,14 @@
  * Command line editing and history wrapper for readline
  * Copyright (c) 2010, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -112,7 +118,7 @@ static void readline_cmd_handler(char *cmd)
 int edit_init(void (*cmd_cb)(void *ctx, char *cmd),
 	      void (*eof_cb)(void *ctx),
 	      char ** (*completion_cb)(void *ctx, const char *cmd, int pos),
-	      void *ctx, const char *history_file, const char *ps)
+	      void *ctx, const char *history_file)
 {
 	edit_cb_ctx = ctx;
 	edit_cmd_cb = cmd_cb;
@@ -127,17 +133,6 @@ int edit_init(void (*cmd_cb)(void *ctx, char *cmd),
 
 	eloop_register_read_sock(STDIN_FILENO, edit_read_char, NULL, NULL);
 
-	if (ps) {
-		size_t blen = os_strlen(ps) + 3;
-		char *ps2 = os_malloc(blen);
-		if (ps2) {
-			os_snprintf(ps2, blen, "%s> ", ps);
-			rl_callback_handler_install(ps2, readline_cmd_handler);
-			os_free(ps2);
-			return 0;
-		}
-	}
-
 	rl_callback_handler_install("> ", readline_cmd_handler);
 
 	return 0;
@@ -147,9 +142,6 @@ int edit_init(void (*cmd_cb)(void *ctx, char *cmd),
 void edit_deinit(const char *history_file,
 		 int (*filter_cb)(void *ctx, const char *cmd))
 {
-	rl_set_prompt("");
-	rl_replace_line("", 0);
-	rl_redisplay();
 	rl_callback_handler_remove();
 	readline_free_completions();
 

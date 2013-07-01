@@ -2,8 +2,14 @@
  * wpa_supplicant - TDLS
  * Copyright (c) 2010-2011, Atheros Communications
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "utils/includes.h"
@@ -2202,9 +2208,7 @@ int wpa_tdls_init(struct wpa_sm *sm)
 	if (sm == NULL)
 		return -1;
 
-	sm->l2_tdls = l2_packet_init(sm->bridge_ifname ? sm->bridge_ifname :
-				     sm->ifname,
-				     sm->own_addr,
+	sm->l2_tdls = l2_packet_init(sm->ifname, sm->own_addr,
 				     ETH_P_80211_ENCAP, wpa_supplicant_rx_tdls,
 				     sm, 0);
 	if (sm->l2_tdls == NULL) {

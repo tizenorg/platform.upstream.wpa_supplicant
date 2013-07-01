@@ -2,8 +2,14 @@
  * Test program for EAP-SIM PRF
  * Copyright (c) 2004-2006, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "eap_common/eap_sim_common.c"
@@ -28,7 +34,7 @@ static int test_eap_sim_prf(void)
 
 	printf("Testing EAP-SIM PRF (FIPS 186-2 + change notice 1)\n");
 	eap_sim_prf(xkey, buf, sizeof(buf));
-	if (memcmp(w, buf, sizeof(w)) != 0) {
+	if (memcmp(w, buf, sizeof(w) != 0)) {
 		printf("eap_sim_prf failed\n");
 		return 1;
 	}

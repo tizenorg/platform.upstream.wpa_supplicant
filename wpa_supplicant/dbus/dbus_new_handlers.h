@@ -3,8 +3,14 @@
  * Copyright (c) 2006, Dan Williams <dcbw@redhat.com> and Red Hat, Inc.
  * Copyright (c) 2009-2010, Witold Sowa <witold.sowa@gmail.com>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef CTRL_IFACE_DBUS_NEW_HANDLERS_H
@@ -80,10 +86,6 @@ dbus_bool_t wpas_dbus_getter_interfaces(DBusMessageIter *iter,
 dbus_bool_t wpas_dbus_getter_eap_methods(DBusMessageIter *iter,
 					 DBusError *error, void *user_data);
 
-dbus_bool_t wpas_dbus_getter_global_capabilities(DBusMessageIter *iter,
-						 DBusError *error,
-						 void *user_data);
-
 DBusMessage * wpas_dbus_handler_scan(DBusMessage *message,
 				     struct wpa_supplicant *wpa_s);
 
@@ -96,9 +98,6 @@ dbus_bool_t set_network_properties(struct wpa_supplicant *wpa_s,
 				   DBusError *error);
 
 DBusMessage * wpas_dbus_handler_add_network(DBusMessage *message,
-					    struct wpa_supplicant *wpa_s);
-
-DBusMessage * wpas_dbus_handler_reassociate(DBusMessage *message,
 					    struct wpa_supplicant *wpa_s);
 
 DBusMessage * wpas_dbus_handler_remove_network(DBusMessage *message,
@@ -125,9 +124,6 @@ DBusMessage * wpas_dbus_handler_remove_blob(DBusMessage *message,
 DBusMessage * wpas_dbus_handler_flush_bss(DBusMessage *message,
 					  struct wpa_supplicant *wpa_s);
 
-DBusMessage * wpas_dbus_handler_autoscan(DBusMessage *message,
-					 struct wpa_supplicant *wpa_s);
-
 dbus_bool_t wpas_dbus_getter_capabilities(DBusMessageIter *iter,
 					  DBusError *error, void *user_data);
 
@@ -151,10 +147,6 @@ dbus_bool_t wpas_dbus_setter_fast_reauth(DBusMessageIter *iter,
 					 DBusError *error,
 					 void *user_data);
 
-dbus_bool_t wpas_dbus_getter_disconnect_reason(DBusMessageIter *iter,
-					       DBusError *error,
-					       void *user_data);
-
 dbus_bool_t wpas_dbus_getter_bss_expire_age(DBusMessageIter *iter,
 					    DBusError *error, void *user_data);
 
@@ -175,14 +167,6 @@ dbus_bool_t wpas_dbus_getter_country(DBusMessageIter *iter, DBusError *error,
 
 dbus_bool_t wpas_dbus_setter_country(DBusMessageIter *iter, DBusError *error,
 				     void *user_data);
-
-dbus_bool_t wpas_dbus_getter_scan_interval(DBusMessageIter *iter,
-					   DBusError *error,
-					   void *user_data);
-
-dbus_bool_t wpas_dbus_setter_scan_interval(DBusMessageIter *iter,
-					   DBusError *error,
-					   void *user_data);
 
 dbus_bool_t wpas_dbus_getter_ifname(DBusMessageIter *iter, DBusError *error,
 				    void *user_data);
@@ -242,9 +226,6 @@ dbus_bool_t wpas_dbus_getter_bss_wpa(DBusMessageIter *iter, DBusError *error,
 dbus_bool_t wpas_dbus_getter_bss_rsn(DBusMessageIter *iter, DBusError *error,
 				     void *user_data);
 
-dbus_bool_t wpas_dbus_getter_bss_wps(DBusMessageIter *iter, DBusError *error,
-				     void *user_data);
-
 dbus_bool_t wpas_dbus_getter_bss_ies(DBusMessageIter *iter, DBusError *error,
 				     void *user_data);
 
@@ -276,10 +257,5 @@ DBusMessage * wpas_dbus_error_invalid_args(DBusMessage *message,
 					   const char *arg);
 DBusMessage * wpas_dbus_error_unknown_error(DBusMessage *message,
 					    const char *arg);
-
-DBusMessage * wpas_dbus_handler_subscribe_preq(
-	DBusMessage *message, struct wpa_supplicant *wpa_s);
-DBusMessage * wpas_dbus_handler_unsubscribe_preq(
-	DBusMessage *message, struct wpa_supplicant *wpa_s);
 
 #endif /* CTRL_IFACE_DBUS_HANDLERS_NEW_H */

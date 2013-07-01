@@ -2,8 +2,14 @@
  * Wi-Fi Protected Setup - message definitions
  * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef WPS_DEFS_H
@@ -41,7 +47,7 @@ extern int wps_testing_dummy_cred;
 #define WPS_MGMTAUTHKEY_LEN 32
 #define WPS_MGMTENCKEY_LEN 16
 #define WPS_MGMT_KEY_ID_LEN 16
-#define WPS_OOB_DEVICE_PASSWORD_MIN_LEN 16
+#define WPS_OOB_DEVICE_PASSWORD_ATTR_LEN 54
 #define WPS_OOB_DEVICE_PASSWORD_LEN 32
 #define WPS_OOB_PUBKEY_HASH_LEN 20
 

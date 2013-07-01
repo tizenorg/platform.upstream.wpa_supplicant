@@ -2,8 +2,14 @@
  * hostapd / EAP-MSCHAPv2 (draft-kamath-pppext-eap-mschapv2-00.txt) server
  * Copyright (c) 2004-2007, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #include "includes.h"
@@ -399,12 +405,9 @@ static void eap_mschapv2_process_response(struct eap_sm *sm,
 		if (sm->user->password_hash) {
 			pw_hash = sm->user->password;
 		} else {
-			if (nt_password_hash(sm->user->password,
-					     sm->user->password_len,
-					     pw_hash_buf) < 0) {
-				data->state = FAILURE;
-				return;
-			}
+			nt_password_hash(sm->user->password,
+					 sm->user->password_len,
+					 pw_hash_buf);
 			pw_hash = pw_hash_buf;
 		}
 		generate_authenticator_response_pwhash(

@@ -2,8 +2,14 @@
  * wpa_supplicant - SME
  * Copyright (c) 2009-2010, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef SME_H
@@ -34,9 +40,6 @@ void sme_state_changed(struct wpa_supplicant *wpa_s);
 void sme_disassoc_while_authenticating(struct wpa_supplicant *wpa_s,
 				       const u8 *prev_pending_bssid);
 void sme_deinit(struct wpa_supplicant *wpa_s);
-
-int sme_proc_obss_scan(struct wpa_supplicant *wpa_s);
-void sme_sched_obss_scan(struct wpa_supplicant *wpa_s, int enable);
 
 #else /* CONFIG_SME */
 
@@ -95,16 +98,6 @@ sme_disassoc_while_authenticating(struct wpa_supplicant *wpa_s,
 }
 
 static inline void sme_deinit(struct wpa_supplicant *wpa_s)
-{
-}
-
-static inline int sme_proc_obss_scan(struct wpa_supplicant *wpa_s)
-{
-	return 0;
-}
-
-static inline void sme_sched_obss_scan(struct wpa_supplicant *wpa_s,
-				       int enable)
 {
 }
 

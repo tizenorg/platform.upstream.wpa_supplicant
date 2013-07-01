@@ -21,7 +21,6 @@
 #include "ap_config.h"
 #include "ap_drv_ops.h"
 #include "vlan_init.h"
-#include "vlan_util.h"
 
 
 #ifdef CONFIG_FULL_DYNAMIC_VLAN
@@ -336,9 +335,7 @@ static int br_getnumports(const char *br_name)
 }
 
 
-#ifndef CONFIG_VLAN_NETLINK
-
-int vlan_rem(const char *if_name)
+static int vlan_rem(const char *if_name)
 {
 	int fd;
 	struct vlan_ioctl_args if_request;
@@ -381,7 +378,7 @@ int vlan_rem(const char *if_name)
 	returns 1 if the interface already exists
 	returns 0 otherwise
 */
-int vlan_add(const char *if_name, int vid, const char *vlan_if_name)
+static int vlan_add(const char *if_name, int vid)
 {
 	int fd;
 	struct vlan_ioctl_args if_request;
@@ -477,8 +474,6 @@ static int vlan_set_name_type(unsigned int name_type)
 	return 0;
 }
 
-#endif /* CONFIG_VLAN_NETLINK */
-
 
 static void vlan_newlink(char *ifname, struct hostapd_data *hapd)
 {
@@ -486,7 +481,6 @@ static void vlan_newlink(char *ifname, struct hostapd_data *hapd)
 	char br_name[IFNAMSIZ];
 	struct hostapd_vlan *vlan = hapd->conf->vlan;
 	char *tagged_interface = hapd->conf->ssid.vlan_tagged_interface;
-	int vlan_naming = hapd->conf->ssid.vlan_naming;
 
 	wpa_printf(MSG_DEBUG, "VLAN: vlan_newlink(%s)", ifname);
 
@@ -502,21 +496,12 @@ static void vlan_newlink(char *ifname, struct hostapd_data *hapd)
 			ifconfig_up(br_name);
 
 			if (tagged_interface) {
-				if (vlan_naming ==
-				    DYNAMIC_VLAN_NAMING_WITH_DEVICE)
-					os_snprintf(vlan_ifname,
-						    sizeof(vlan_ifname),
-						    "%s.%d", tagged_interface,
-						    vlan->vlan_id);
-				else
-					os_snprintf(vlan_ifname,
-						    sizeof(vlan_ifname),
-						    "vlan%d", vlan->vlan_id);
 
-				ifconfig_up(tagged_interface);
-				if (!vlan_add(tagged_interface, vlan->vlan_id,
-					      vlan_ifname))
+				if (!vlan_add(tagged_interface, vlan->vlan_id))
 					vlan->clean |= DVLAN_CLEAN_VLAN;
+
+				os_snprintf(vlan_ifname, sizeof(vlan_ifname),
+					    "vlan%d", vlan->vlan_id);
 
 				if (!br_addif(br_name, vlan_ifname))
 					vlan->clean |= DVLAN_CLEAN_VLAN_PORT;
@@ -542,7 +527,6 @@ static void vlan_dellink(char *ifname, struct hostapd_data *hapd)
 	char br_name[IFNAMSIZ];
 	struct hostapd_vlan *first, *prev, *vlan = hapd->conf->vlan;
 	char *tagged_interface = hapd->conf->ssid.vlan_tagged_interface;
-	int vlan_naming = hapd->conf->ssid.vlan_naming;
 
 	wpa_printf(MSG_DEBUG, "VLAN: vlan_dellink(%s)", ifname);
 
@@ -557,16 +541,8 @@ static void vlan_dellink(char *ifname, struct hostapd_data *hapd)
 				br_delif(br_name, vlan->ifname);
 
 			if (tagged_interface) {
-				if (vlan_naming ==
-				    DYNAMIC_VLAN_NAMING_WITH_DEVICE)
-					os_snprintf(vlan_ifname,
-						    sizeof(vlan_ifname),
-						    "%s.%d", tagged_interface,
-						    vlan->vlan_id);
-				else
-					os_snprintf(vlan_ifname,
-						    sizeof(vlan_ifname),
-						    "vlan%d", vlan->vlan_id);
+				os_snprintf(vlan_ifname, sizeof(vlan_ifname),
+					    "vlan%d", vlan->vlan_id);
 				if (vlan->clean & DVLAN_CLEAN_VLAN_PORT)
 					br_delif(br_name, vlan_ifname);
 				ifconfig_down(vlan_ifname);
@@ -706,12 +682,7 @@ full_dynamic_vlan_init(struct hostapd_data *hapd)
 	if (priv == NULL)
 		return NULL;
 
-#ifndef CONFIG_VLAN_NETLINK
-	vlan_set_name_type(hapd->conf->ssid.vlan_naming ==
-			   DYNAMIC_VLAN_NAMING_WITH_DEVICE ?
-			   VLAN_NAME_TYPE_RAW_PLUS_VID_NO_PAD :
-			   VLAN_NAME_TYPE_PLUS_VID_NO_PAD);
-#endif /* CONFIG_VLAN_NETLINK */
+	vlan_set_name_type(VLAN_NAME_TYPE_PLUS_VID_NO_PAD);
 
 	priv->s = socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (priv->s < 0) {

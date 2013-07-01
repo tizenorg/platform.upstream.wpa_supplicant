@@ -2,8 +2,14 @@
  * TLSv1 client - internal structures
  * Copyright (c) 2006-2011, Jouni Malinen <j@w1.fi>
  *
- * This software may be distributed under the terms of the BSD license.
- * See README for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
  */
 
 #ifndef TLSV1_CLIENT_I_H
@@ -62,8 +68,6 @@ struct tlsv1_client {
 
 	tlsv1_client_session_ticket_cb session_ticket_cb;
 	void *session_ticket_cb_ctx;
-
-	struct wpabuf *partial_input;
 };
 
 
