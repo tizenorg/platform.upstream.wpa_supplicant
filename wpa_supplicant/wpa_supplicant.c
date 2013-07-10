@@ -426,6 +426,7 @@ static void wpa_supplicant_cleanup(struct wpa_supplicant *wpa_s)
 	wpa_bss_deinit(wpa_s);
 
 	wpa_supplicant_cancel_scan(wpa_s);
+	wpa_supplicant_cancel_delayed_sched_scan(wpa_s);
 	wpa_supplicant_cancel_auth_timeout(wpa_s);
 	eloop_cancel_timeout(wpa_supplicant_stop_countermeasures, wpa_s, NULL);
 #ifdef CONFIG_DELAYED_MIC_ERROR_REPORT
