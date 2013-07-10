@@ -1218,6 +1218,24 @@ void wpa_supplicant_cancel_sched_scan(struct wpa_supplicant *wpa_s)
 
 
 /**
+ * wpa_supplicant_cancel_delayed_sched_scan - Stop running delayed
+ * scheduled scans
+ * @wpa_s: Pointer to wpa_supplicant data
+ *
+ * This function is used to stop a delayed scheduled scan.
+ */
+void wpa_supplicant_cancel_delayed_sched_scan(struct wpa_supplicant *wpa_s)
+{
+	if (!wpa_s->sched_scan_supported)
+		return;
+
+	wpa_dbg(wpa_s, MSG_DEBUG, "Cancelling delayed sched scan");
+	eloop_cancel_timeout(wpa_supplicant_delayed_sched_scan_timeout,
+			     wpa_s, NULL);
+}
+
+
+/**
  * wpa_supplicant_notify_scanning - Indicate possible scan state change
  * @wpa_s: Pointer to wpa_supplicant data
  * @scanning: Whether scanning is currently in progress
