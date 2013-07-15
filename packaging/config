@@ -464,3 +464,7 @@ CONFIG_DEBUG_FILE=y
 # external networks (GAS/ANQP to learn more about the networks and network
 # selection based on available credentials).
 #CONFIG_INTERWORKING=y
+
+#Additional flags
+CONFIG_P2P=y
+CONFIG_AP=y
