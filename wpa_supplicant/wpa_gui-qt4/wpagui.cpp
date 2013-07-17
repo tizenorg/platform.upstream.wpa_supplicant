@@ -6,6 +6,9 @@
  * See README for more details.
  */
 
+/* Need to get getopt() */
+#include <unistd.h>
+
 #ifdef CONFIG_NATIVE_WINDOWS
 #include <windows.h>
 #endif /* CONFIG_NATIVE_WINDOWS */
