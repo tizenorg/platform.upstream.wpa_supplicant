@@ -1421,6 +1421,9 @@ void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 	if (iface == NULL)
 		return;
 
+	if (member == NULL)
+		return;
+
 	if (!wpa_s->dbus_groupobj_path)
 		return;
 
@@ -3575,6 +3578,9 @@ void wpas_dbus_register_p2p_groupmember(struct wpa_supplicant *wpa_s,
 
 	/* Do nothing if the control interface is not turned on */
 	if (wpa_s == NULL || wpa_s->global == NULL)
+		return;
+
+	if (p2p_if_addr == NULL)
 		return;
 
 	ctrl_iface = wpa_s->global->dbus;

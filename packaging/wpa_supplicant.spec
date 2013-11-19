@@ -31,6 +31,7 @@ cp %{SOURCE1} wpa_supplicant/.config
 cd wpa_supplicant
 CFLAGS="%{optflags}" make V=1 BINDIR=%{_sbindir} %{?_smp_mflags}
 
+TIZEN_EXT=y; export TIZEN_EXT
 
 %install
 install -d %{buildroot}/%{_sbindir}
