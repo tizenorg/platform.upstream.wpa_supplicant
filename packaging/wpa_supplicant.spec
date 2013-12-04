@@ -45,8 +45,8 @@ install -m 0644 wpa_supplicant/dbus/fi.epitest.hostap.WPASupplicant.service %{bu
 install -m 0644 wpa_supplicant/dbus/fi.w1.wpa_supplicant1.service %{buildroot}/%{_datadir}/dbus-1/system-services
 install -d %{buildroot}/%{_localstatedir}/run/%{name}
 install -d %{buildroot}%{_mandir}/man{5,8}
-install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8
-install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5
+install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8 || :
+install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5 || :
 
 # install systemd service file
 mkdir -p %{buildroot}%{_unitdir}
