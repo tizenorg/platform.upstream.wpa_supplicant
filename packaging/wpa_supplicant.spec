@@ -7,6 +7,7 @@ Url:            http://hostap.epitest.fi/wpa_supplicant/
 Group:          Connectivity/Wireless
 Source:         http://hostap.epitest.fi/releases/wpa_supplicant-%{version}.tar.gz
 Source1:        config
+Source2:        wpa_supplicant.conf
 Source1001: 	wpa_supplicant.manifest
 BuildRequires:  dbus-devel
 BuildRequires:  libnl-devel
@@ -43,6 +44,7 @@ install -m 0755 wpa_supplicant/wpa_supplicant %{buildroot}%{_sbindir}
 install -d %{buildroot}%{_sysconfdir}/dbus-1/system.d
 install -m 0644 wpa_supplicant/dbus/dbus-wpa_supplicant.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/wpa_supplicant.conf
 install -d %{buildroot}/%{_sysconfdir}/%{name}
+install -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/%{name}.conf
 install -d %{buildroot}/%{_datadir}/dbus-1/system-services
 install -m 0644 wpa_supplicant/dbus/fi.epitest.hostap.WPASupplicant.service %{buildroot}/%{_datadir}/dbus-1/system-services
 install -m 0644 wpa_supplicant/dbus/fi.w1.wpa_supplicant1.service %{buildroot}/%{_datadir}/dbus-1/system-services
@@ -68,6 +70,7 @@ ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa
 %{_sbindir}/wpa_passphrase
 %{_sbindir}/wpa_supplicant
 %config %{_sysconfdir}/dbus-1/system.d/%{name}.conf
+%config %{_sysconfdir}/%{name}.conf
 %{_datadir}/dbus-1/system-services
 %dir %{_localstatedir}/run/%{name}
 %ghost /var/run/%{name}
