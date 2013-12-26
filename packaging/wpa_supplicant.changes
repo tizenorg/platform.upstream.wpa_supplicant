@@ -1,3 +1,7 @@
+* Thu Dec 26 2013 Kévin THIERRY <kevin.thierry@open.eurogiciel.org> ivi_oct_m2@d5163e7
+- Add config file wpa_supplicant.conf
+  Bug-TIVI: TIVI-2511 (Add a config file to wpa_supplicant)
+
 * Thu Jul 04 2013 - zhengguang.zhang@intel.com
 - Import upstream version 2.0 and add packaging files
 
