@@ -1,3 +1,7 @@
+* Fri Dec 27 2013 Kévin THIERRY <kevin.thierry@open.eurogiciel.org> ivi_oct_m2@9d941a5
+- Add option to build the Wi-Fi Display feature
+  Bug-TIVI: TIVI-2522 (Add the "CONFIG_WIFI_DISPLAY" build option)
+
 * Thu Dec 26 2013 Kévin THIERRY <kevin.thierry@open.eurogiciel.org> ivi_oct_m2@d5163e7
 - Add config file wpa_supplicant.conf
   Bug-TIVI: TIVI-2511 (Add a config file to wpa_supplicant)
