@@ -1,5 +1,5 @@
 Name:           wpa_supplicant
-Version:        2.0+1171+g50acc38
+Version:        2.0+1625+g1412bee
 Release:        0
 License:        BSD-3-Clause and GPL-2.0+
 Summary:        WPA supplicant implementation
