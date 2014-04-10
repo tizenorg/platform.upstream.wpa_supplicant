@@ -806,7 +806,9 @@ static int interworking_connect_3gpp(struct wpa_supplicant *wpa_s,
 		return -1;
 	ssid->parent_cred = cred;
 
+#if !defined TIZEN_EXT
 	wpas_notify_network_added(wpa_s, ssid);
+#endif
 	wpa_config_set_network_defaults(ssid);
 	ssid->priority = cred->priority;
 	ssid->temporary = 1;
@@ -873,7 +875,9 @@ static int interworking_connect_3gpp(struct wpa_supplicant *wpa_s,
 	if (cred->password && cred->password[0] &&
 	    wpa_config_set_quoted(ssid, "password", cred->password) < 0)
 		goto fail;
-
+#if defined TIZEN_EXT
+	wpas_notify_network_added(wpa_s, ssid);
+#endif
 	wpa_config_update_prio_list(wpa_s->conf);
 	interworking_reconnect(wpa_s);
 
