@@ -36,6 +36,9 @@ static const char *debug_strings[] = {
 	"excessive", "msgdump", "debug", "info", "warning", "error", NULL
 };
 
+#if defined TIZEN_EXT
+#define TIZEN_WPA_SUPPLICANT_CONFIG_PATH	"/etc/wap_supplicant/wpa_supplicant.conf"
+#endif
 
 /**
  * wpas_dbus_error_unknown_error - Return a new InvalidArgs error message
@@ -574,6 +577,12 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 
 	if (ifname == NULL)
 		goto error; /* Required Ifname argument missing */
+
+#if defined TIZEN_EXT
+	/* Tizen uses configuration as a default */
+	if (confname == NULL)
+		confname = os_strdup("TIZEN_WPA_SUPPLICANT_CONFIG_PATH");
+#endif
 
 	/*
 	 * Try to get the wpa_supplicant record for this iface, return
