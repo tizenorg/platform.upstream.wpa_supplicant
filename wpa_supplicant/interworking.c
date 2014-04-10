@@ -930,7 +930,6 @@ static int interworking_connect_3gpp(struct wpa_supplicant *wpa_s,
 	if (ssid == NULL)
 		return -1;
 	ssid->parent_cred = cred;
-
 	wpas_notify_network_added(wpa_s, ssid);
 	wpa_config_set_network_defaults(ssid);
 	ssid->priority = cred->priority;
@@ -1665,7 +1664,9 @@ static int interworking_connect_helper(struct wpa_supplicant *wpa_s,
 		return -1;
 	}
 	ssid->parent_cred = cred;
+#if! defined TIZEN_EXT
 	wpas_notify_network_added(wpa_s, ssid);
+#endif
 	wpa_config_set_network_defaults(ssid);
 	ssid->priority = cred->priority;
 	ssid->temporary = 1;
@@ -1747,6 +1748,10 @@ static int interworking_connect_helper(struct wpa_supplicant *wpa_s,
 		goto fail;
 
 	nai_realm_free(realm, count);
+
+#if defined TIZEN_EXT
+	wpas_notify_network_added(wpa_s, ssid);
+#endif
 
 	wpa_s->next_ssid = ssid;
 	wpa_config_update_prio_list(wpa_s->conf);
