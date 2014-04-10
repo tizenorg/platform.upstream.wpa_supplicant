@@ -353,6 +353,29 @@ static struct wpa_bss * wpa_bss_add(struct wpa_supplicant *wpa_s,
 		wpa_s->conf->bss_max_count = wpa_s->num_bss + 1;
 	}
 
+#if defined TIZEN_EXT
+	if (wpa_s->conf->auto_interworking &&
+		wpa_s->conf->interworking &&
+		wpa_s->conf->cred) {
+
+		/*
+		 * Passpoint : enable the disabled network when the network is found again.
+		 */
+		struct wpa_ssid *ssid_temp;
+
+		if (wpa_bss_get_vendor_ie(bss, HS20_IE_VENDOR_TYPE)) {
+			for (ssid_temp = wpa_s->conf->ssid; ssid_temp; ssid_temp = ssid_temp->next) {
+				if (ssid_temp->ssid == NULL || ssid_temp->ssid_len == 0)
+					continue;
+
+				if (ssid_temp->ssid_len == bss->ssid_len &&
+					os_memcmp(ssid_temp->ssid, bss->ssid, ssid_temp->ssid_len) == 0)
+					wpa_supplicant_enable_network(wpa_s, ssid_temp);
+			}
+		}
+	}
+#endif
+
 	dl_list_add_tail(&wpa_s->bss, &bss->list);
 	dl_list_add_tail(&wpa_s->bss_id, &bss->list_id);
 	wpa_s->num_bss++;
