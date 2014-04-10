@@ -122,6 +122,16 @@ DBusMessage * wpas_dbus_handler_get_blob(DBusMessage *message,
 DBusMessage * wpas_dbus_handler_remove_blob(DBusMessage *message,
 					    struct wpa_supplicant *wpa_s);
 
+#if defined TIZEN_EXT
+/* Extend to get/set hs20(passpoint) on/off */
+dbus_bool_t wpas_dbus_getter_passpoint(DBusMessageIter *iter,
+					 DBusError *error,
+					 void *user_data);
+dbus_bool_t wpas_dbus_setter_passpoint(DBusMessageIter *iter,
+					 DBusError *error,
+					 void *user_data);
+#endif
+
 DBusMessage * wpas_dbus_handler_flush_bss(DBusMessage *message,
 					  struct wpa_supplicant *wpa_s);
 

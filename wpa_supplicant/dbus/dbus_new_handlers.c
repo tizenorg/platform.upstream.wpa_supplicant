@@ -3631,6 +3631,80 @@ dbus_bool_t wpas_dbus_setter_network_properties(DBusMessageIter *iter,
 	return set_network_properties(net->wpa_s, ssid, &variant_iter, error);
 }
 
+#if defined TIZEN_EXT
+/**
+ * wpas_dbus_getter_passpoint - Get current passpoint on/off state
+ * @iter: Pointer to incoming dbus message iter
+ * @error: Location to store error on failure
+ * @user_data: Function specific data
+ * Returns: TRUE on success, FALSE on failure
+ *
+ * Getter for "Passpoint" property of a configured network.
+ */
+dbus_bool_t wpas_dbus_getter_passpoint(DBusMessageIter *iter, DBusError *error,
+				     void *user_data)
+{
+	struct wpa_supplicant *wpa_s = user_data;
+	dbus_int32_t enabled;
+
+	if (!wpa_s->conf) {
+		wpa_printf(MSG_ERROR, "No configuration found");
+		return FALSE;
+	}
+
+	enabled = (wpa_s->conf->interworking & wpa_s->conf->hs20) ? 1 : 0;
+
+	return wpas_dbus_simple_property_getter(iter, DBUS_TYPE_INT32,
+						&enabled, error);
+}
+
+/**
+ * wpas_dbus_setter_passpoint - Set option for passpoint on/off
+ * @iter: Pointer to incoming dbus message iter
+ * @error: Location to store error on failure
+ * @user_data: Function specific data
+ * Returns: TRUE on success, FALSE on failure
+ *
+ * Setter for "Passpoint(hs20, interworking, auto_interworking)" property of a configured network.
+ */
+dbus_bool_t wpas_dbus_setter_passpoint(DBusMessageIter *iter, DBusError *error,
+				     void *user_data)
+{
+	struct wpa_supplicant *wpa_s = user_data;
+	dbus_int32_t enable;
+
+	if (!wpa_s->conf) {
+		wpa_printf(MSG_ERROR, "No configuration found");
+		return FALSE;
+	}
+
+	if (!wpas_dbus_simple_property_setter(iter, error, DBUS_TYPE_INT32,
+					      &enable))
+		return FALSE;
+
+	if (enable) {
+		wpa_s->conf->interworking = 1;
+		wpa_s->conf->hs20 = 1;
+		wpa_s->conf->auto_interworking = 1;
+/*			
+		wpa_supplicant_load_cred(wpa_s);
+		if (wpa_s->wpa_state != WPA_INTERFACE_DISABLED) {
+			wpa_s->scan_req = 2;
+			wpa_supplicant_req_scan(wpa_s, 0, 0);
+		}
+*/
+	} else {
+		wpa_s->conf->interworking = 0;
+		wpa_s->conf->hs20 = 0;
+		wpa_s->conf->auto_interworking = 0;
+	}
+
+	wpa_config_write(wpa_s->confname, wpa_s->conf);
+
+	return TRUE;
+}
+#endif
+
 
 #ifdef CONFIG_AP
 

@@ -2798,6 +2798,12 @@ static const struct wpa_dbus_property_desc wpas_dbus_interface_properties[] = {
 	  wpas_dbus_getter_scan_interval,
 	  wpas_dbus_setter_scan_interval
 	},
+#ifdef TIZEN_EXT
+	{ "Passpoint", WPAS_DBUS_NEW_IFACE_INTERFACE, "b",
+	  wpas_dbus_getter_passpoint,
+	  wpas_dbus_setter_passpoint
+	},
+#endif
 #ifdef CONFIG_WPS
 	{ "ProcessCredentials", WPAS_DBUS_NEW_IFACE_WPS, "b",
 	  wpas_dbus_getter_process_credentials,
