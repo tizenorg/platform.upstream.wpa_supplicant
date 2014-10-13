@@ -1,5 +1,5 @@
 Name:           wpa_supplicant
-Version:        2.2
+Version:        2.3
 Release:        0
 License:        BSD-3-Clause and GPL-2.0+
 Summary:        WPA supplicant implementation
