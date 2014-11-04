@@ -464,6 +464,12 @@ CONFIG_DEBUG_FILE=y
 # external networks (GAS/ANQP to learn more about the networks and network
 # selection based on available credentials).
 #CONFIG_INTERWORKING=y
+CONFIG_INTERWORKING=y
+
+# Hotspot 2.0
+#CONFIG_HS20=y
+CONFIG_HS20=y
+
 
 # Additional flags
 

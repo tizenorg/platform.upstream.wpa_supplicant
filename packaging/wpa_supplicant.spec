@@ -13,6 +13,7 @@ BuildRequires:  dbus-devel
 BuildRequires:  libnl-devel
 BuildRequires:  openssl-devel
 BuildRequires:  pkg-config
+BuildRequires:  webkit
 BuildRequires:  readline-devel
 BuildRequires:  systemd
 
@@ -36,6 +37,14 @@ CFLAGS+=" -DTIZEN_ARM"
 %endif
 make V=1 BINDIR=%{_sbindir} %{?_smp_mflags}
 
+cd ../hs20/client/
+CFLAGS="%{optflags}"
+%ifarch %arm
+CFLAGS+=" -DTIZEN_ARM"
+%endif
+make V=1 BINDIR=%{_sbindir} %{?_smp_mflags}
+cd ../../
+
 %install
 install -d %{buildroot}/%{_sbindir}
 install -m 0755 wpa_supplicant/wpa_cli %{buildroot}%{_sbindir}
@@ -52,6 +61,7 @@ install -d %{buildroot}/%{_localstatedir}/run/%{name}
 install -d %{buildroot}%{_mandir}/man{5,8}
 install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8
 install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5
+install -m 0755 ../hs20/client/hs20-osu-client %{buildroot}%{_sbindir}
 
 # install systemd service file
 mkdir -p %{buildroot}%{_unitdir}
