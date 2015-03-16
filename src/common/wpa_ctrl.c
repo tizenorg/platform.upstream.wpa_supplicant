@@ -518,6 +518,10 @@ retry_send:
 		res = select(ctrl->s + 1, &rfds, NULL, NULL, &tv);
 		if (res < 0)
 			return res;
+		if (ctrl == NULL) {
+			/* ctrl socket is closed */
+			return -77;
+		}
 		if (FD_ISSET(ctrl->s, &rfds)) {
 			res = recv(ctrl->s, reply, *reply_len, 0);
 			if (res < 0)

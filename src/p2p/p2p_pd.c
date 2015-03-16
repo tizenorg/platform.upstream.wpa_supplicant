@@ -388,6 +388,9 @@ int p2p_send_prov_disc_req(struct p2p_data *p2p, struct p2p_device *dev,
 		/* TODO: use device discoverability request through GO */
 	}
 
+	dev->dialog_token++;
+	if (dev->dialog_token == 0)
+		dev->dialog_token = 1;
 	req = p2p_build_prov_disc_req(p2p, dev->dialog_token,
 				      dev->req_config_methods,
 				      join ? dev : NULL);
