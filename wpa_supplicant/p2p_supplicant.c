@@ -4048,6 +4048,10 @@ int wpas_p2p_init(struct wpa_global *global, struct wpa_supplicant *wpa_s)
  */
 void wpas_p2p_deinit(struct wpa_supplicant *wpa_s)
 {
+#if defined TIZEN_EXT
+	if (wpa_s == NULL)
+		return;
+#endif
 	if (wpa_s->driver && wpa_s->drv_priv)
 		wpa_drv_probe_req_report(wpa_s, 0);
 
