@@ -570,6 +570,8 @@ void p2p_rx_gas_initial_resp(struct p2p_data *p2p, const u8 *sa,
 	p2p_dbg(p2p, "Service Update Indicator: %u", update_indic);
 	pos += 2;
 
+	p2p->sd_peer->flags |= P2P_DEV_SD_INFO;
+	p2p->sd_peer->flags &= ~P2P_DEV_SD_SCHEDULE;
 	p2p->sd_peer = NULL;
 
 	if (p2p->sd_query) {
@@ -809,6 +811,8 @@ skip_nqp_header:
 		return;
 	}
 
+	p2p->sd_peer->flags |= P2P_DEV_SD_INFO;
+	p2p->sd_peer->flags &= ~P2P_DEV_SD_SCHEDULE;
 	p2p->sd_peer = NULL;
 
 	if (p2p->sd_query) {

@@ -139,6 +139,10 @@ static const char * p2p_state_txt(int state)
 		return "INVITE";
 	case P2P_INVITE_LISTEN:
 		return "INVITE_LISTEN";
+	case P2P_SEARCH_WHEN_READY:
+		return "SEARCH_WHEN_READY";
+	case P2P_CONTINUE_SEARCH_WHEN_READY:
+		return "CONTINUE_SEARCH_WHEN_READY";
 	default:
 		return "?";
 	}
@@ -958,6 +962,10 @@ static void p2p_search(struct p2p_data *p2p)
 	if (res < 0) {
 		p2p_dbg(p2p, "Scan request failed");
 		p2p_continue_find(p2p);
+	} else if (p2p->p2p_scan_running) {
+		p2p_dbg(p2p, "Failed to start p2p_scan - another p2p_scan was already running");
+		/* wait for the previous p2p_scan to complete */
+		res = 0; /* do not report failure */
 	} else {
 		p2p_dbg(p2p, "Running p2p_scan");
 		p2p->p2p_scan_running = 1;
@@ -1387,6 +1395,9 @@ int p2p_connect(struct p2p_data *p2p, const u8 *peer_addr,
 		MAC2STR(peer_addr), go_intent, MAC2STR(own_interface_addr),
 		wps_method, persistent_group, pd_before_go_neg, oob_pw_id);
 
+	if (p2p_prepare_channel(p2p, force_freq) < 0)
+		return -1;
+
 	dev = p2p_get_device(p2p, peer_addr);
 	if (dev == NULL || (dev->flags & P2P_DEV_PROBE_REQ_ONLY)) {
 		p2p_dbg(p2p, "Cannot connect to unknown P2P Device " MACSTR,
@@ -1472,6 +1483,11 @@ int p2p_connect(struct p2p_data *p2p, const u8 *peer_addr,
 	dev->oob_pw_id = oob_pw_id;
 	dev->status = P2P_SC_SUCCESS;
 
+	if (force_freq)
+		dev->flags |= P2P_DEV_FORCE_FREQ;
+	else
+		dev->flags &= ~P2P_DEV_FORCE_FREQ;
+
 	if (p2p->p2p_scan_running) {
 		p2p_dbg(p2p, "p2p_scan running - delay connect send");
 		p2p->start_after_scan = P2P_AFTER_SCAN_CONNECT;
@@ -1498,6 +1514,9 @@ int p2p_authorize(struct p2p_data *p2p, const u8 *peer_addr,
 		" wps_method=%d  persistent_group=%d oob_pw_id=%u",
 		MAC2STR(peer_addr), go_intent, MAC2STR(own_interface_addr),
 		wps_method, persistent_group, oob_pw_id);
+
+	if (p2p_prepare_channel(p2p, force_freq) < 0)
+		return -1;
 
 	dev = p2p_get_device(p2p, peer_addr);
 	if (dev == NULL) {
@@ -1530,6 +1549,11 @@ int p2p_authorize(struct p2p_data *p2p, const u8 *peer_addr,
 	dev->wps_method = wps_method;
 	dev->oob_pw_id = oob_pw_id;
 	dev->status = P2P_SC_SUCCESS;
+
+	if (force_freq)
+		dev->flags |= P2P_DEV_FORCE_FREQ;
+	else
+		dev->flags &= ~P2P_DEV_FORCE_FREQ;
 
 	return 0;
 }
@@ -2053,6 +2077,39 @@ struct wpabuf * p2p_build_probe_resp_ies(struct p2p_data *p2p)
 	p2p_buf_update_ie_hdr(buf, len);
 
 	return buf;
+}
+
+
+static int is_11b(u8 rate)
+{
+	return rate == 0x02 || rate == 0x04 || rate == 0x0b || rate == 0x16;
+}
+
+
+static int supp_rates_11b_only(struct ieee802_11_elems *elems)
+{
+	int num_11b = 0, num_others = 0;
+	int i;
+
+	if (elems->supp_rates == NULL && elems->ext_supp_rates == NULL)
+		return 0;
+
+	for (i = 0; elems->supp_rates && i < elems->supp_rates_len; i++) {
+		if (is_11b(elems->supp_rates[i]))
+			num_11b++;
+		else
+			num_others++;
+	}
+
+	for (i = 0; elems->ext_supp_rates && i < elems->ext_supp_rates_len;
+	     i++) {
+		if (is_11b(elems->ext_supp_rates[i]))
+			num_11b++;
+		else
+			num_others++;
+	}
+
+	return num_11b > 0 && num_others == 0;
 }
 
 
@@ -2777,7 +2834,10 @@ static void p2p_sd_cb(struct p2p_data *p2p, int success)
 	p2p->pending_action_state = P2P_NO_PENDING_ACTION;
 
 	if (!success) {
-		p2p->sd_peer = NULL;
+		if (p2p->sd_peer) {
+			p2p->sd_peer->flags &= ~P2P_DEV_SD_SCHEDULE;
+			p2p->sd_peer = NULL;
+		}
 		p2p_continue_find(p2p);
 		return;
 	}
@@ -3540,6 +3600,10 @@ static void p2p_state_timeout(void *eloop_ctx, void *timeout_ctx)
 		break;
 	case P2P_INVITE_LISTEN:
 		p2p_timeout_invite_listen(p2p);
+		break;
+	case P2P_SEARCH_WHEN_READY:
+		break;
+	case P2P_CONTINUE_SEARCH_WHEN_READY:
 		break;
 	}
 }
@@ -4391,7 +4455,8 @@ int p2p_in_progress(struct p2p_data *p2p)
 {
 	if (p2p == NULL)
 		return 0;
-	if (p2p->state == P2P_SEARCH)
+	if (p2p->state == P2P_SEARCH || p2p->state == P2P_SEARCH_WHEN_READY ||
+		p2p->state == P2P_CONTINUE_SEARCH_WHEN_READY)
 		return 2;
 	return p2p->state != P2P_IDLE && p2p->state != P2P_PROVISIONING;
 }
@@ -4404,6 +4469,13 @@ void p2p_set_config_timeout(struct p2p_data *p2p, u8 go_timeout,
 		p2p->go_timeout = go_timeout;
 		p2p->client_timeout = client_timeout;
 	}
+}
+
+
+void p2p_increase_search_delay(struct p2p_data *p2p, unsigned int delay)
+{
+	if (p2p && p2p->search_delay < delay)
+		p2p->search_delay = delay;
 }
 
 

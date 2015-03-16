@@ -357,6 +357,11 @@ static int wpas_p2p_scan(void *ctx, enum p2p_scan_type type, int freq,
 		break;
 	case P2P_SCAN_FULL:
 		break;
+	case P2P_SCAN_SPECIFIC:
+		social_channels[0] = freq;
+		social_channels[1] = 0;
+		params.freqs = social_channels;
+		break;
 	case P2P_SCAN_SOCIAL_PLUS_ONE:
 		params->freqs = os_calloc(ARRAY_SIZE(social_channels_freq) + 2,
 					  sizeof(int));
@@ -4048,6 +4053,10 @@ int wpas_p2p_init(struct wpa_global *global, struct wpa_supplicant *wpa_s)
  */
 void wpas_p2p_deinit(struct wpa_supplicant *wpa_s)
 {
+#if defined TIZEN_EXT
+	if (wpa_s == NULL)
+		return;
+#endif
 	if (wpa_s->driver && wpa_s->drv_priv)
 		wpa_drv_probe_req_report(wpa_s, 0);
 
@@ -4063,6 +4072,7 @@ void wpas_p2p_deinit(struct wpa_supplicant *wpa_s)
 	eloop_cancel_timeout(wpas_p2p_psk_failure_removal, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_p2p_group_formation_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_p2p_join_scan, wpa_s, NULL);
+	eloop_cancel_timeout(wpas_p2p_pd_before_join_timeout, wpa_s, NULL);
 	wpa_s->p2p_long_listen = 0;
 	eloop_cancel_timeout(wpas_p2p_long_listen_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_p2p_group_idle_timeout, wpa_s, NULL);
@@ -4158,6 +4168,12 @@ static int wpas_p2p_start_go_neg(struct wpa_supplicant *wpa_s,
 {
 	if (persistent_group && wpa_s->conf->persistent_reconnect)
 		persistent_group = 2;
+
+	if (wpa_s->drv_flags & WPA_DRIVER_FLAGS_P2P_MGMT) {
+		return wpa_drv_p2p_connect(wpa_s, peer_addr, wps_method,
+					   go_intent, own_interface_addr,
+					   force_freq, persistent_group);
+	}
 
 	/*
 	 * Increase GO config timeout if HT40 is used since it takes some time

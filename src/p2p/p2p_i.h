@@ -83,6 +83,8 @@ struct p2p_device {
 #define P2P_DEV_PROBE_REQ_ONLY BIT(0)
 #define P2P_DEV_REPORTED BIT(1)
 #define P2P_DEV_NOT_YET_READY BIT(2)
+#define P2P_DEV_SD_INFO BIT(3)
+#define P2P_DEV_SD_SCHEDULE BIT(4)
 #define P2P_DEV_PD_PEER_DISPLAY BIT(5)
 #define P2P_DEV_PD_PEER_KEYPAD BIT(6)
 #define P2P_DEV_USER_REJECTED BIT(7)
@@ -228,6 +230,16 @@ struct p2p_data {
 		 * P2P_INVITE_LISTEN - Listen during Invite
 		 */
 		P2P_INVITE_LISTEN,
+
+		/**
+		 * P2P_SEARCH_WHEN_READY - Waiting to start Search
+		 */
+		P2P_SEARCH_WHEN_READY,
+
+		/**
+		 * P2P_CONTINUE_SEARCH_WHEN_READY - Waiting to continue Search
+		 */
+		P2P_CONTINUE_SEARCH_WHEN_READY,
 	} state;
 
 	/**
