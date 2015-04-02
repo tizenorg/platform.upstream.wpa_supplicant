@@ -316,6 +316,7 @@ int p2p_listen(struct p2p_data *p2p, unsigned int timeout)
 		return -1;
 	}
 
+	p2p->pending_listen_freq = freq;
 	p2p->pending_listen_sec = timeout / 1000;
 	p2p->pending_listen_usec = (timeout % 1000) * 1000;
 
@@ -803,6 +804,9 @@ int p2p_add_device(struct p2p_data *p2p, const u8 *addr, int freq,
 	p2p_parse_free(&msg);
 
 	p2p_update_peer_vendor_elems(dev, ies, ies_len);
+
+	if (p2p_pending_sd_req(p2p, dev))
+		dev->flags |= P2P_DEV_SD_SCHEDULE;	
 
 	if (dev->flags & P2P_DEV_REPORTED)
 		return 0;
@@ -1394,6 +1398,7 @@ int p2p_connect(struct p2p_data *p2p, const u8 *peer_addr,
 		"oob_pw_id=%u",
 		MAC2STR(peer_addr), go_intent, MAC2STR(own_interface_addr),
 		wps_method, persistent_group, pd_before_go_neg, oob_pw_id);
+
 
 	dev = p2p_get_device(p2p, peer_addr);
 	if (dev == NULL || (dev->flags & P2P_DEV_PROBE_REQ_ONLY)) {
