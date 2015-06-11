@@ -4,7 +4,7 @@ Description=WPA supplicant
 [Service]
 Type=dbus
 BusName=fi.epitest.hostap.WPASupplicant
-ExecStart=@BINDIR@/wpa_supplicant -u
+ExecStart=@BINDIR@/wpa_supplicant -u -t -d -f /var/log/wpa_supplicant.log
 
 [Install]
 WantedBy=multi-user.target
