@@ -214,7 +214,7 @@ static void handle_read(int sock, void *eloop_ctx, void *sock_ctx)
 
 	len = recv(sock, buf, sizeof(buf), 0);
 	if (len < 0) {
-		wpa_printf(MSG_ERROR, "recv: %s", strerror(errno));
+		perror("recv");
 		return;
 	}
 
@@ -229,21 +229,19 @@ static int hostap_init_sockets(struct hostap_driver_data *drv, u8 *own_addr)
 
 	drv->sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if (drv->sock < 0) {
-		wpa_printf(MSG_ERROR, "socket[PF_PACKET,SOCK_RAW]: %s",
-			   strerror(errno));
+		perror("socket[PF_PACKET,SOCK_RAW]");
 		return -1;
 	}
 
 	if (eloop_register_read_sock(drv->sock, handle_read, drv, NULL)) {
-		wpa_printf(MSG_ERROR, "Could not register read socket");
+		printf("Could not register read socket\n");
 		return -1;
 	}
 
         memset(&ifr, 0, sizeof(ifr));
         snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%sap", drv->iface);
         if (ioctl(drv->sock, SIOCGIFINDEX, &ifr) != 0) {
-		wpa_printf(MSG_ERROR, "ioctl(SIOCGIFINDEX): %s",
-			   strerror(errno));
+		perror("ioctl(SIOCGIFINDEX)");
 		return -1;
         }
 
@@ -258,7 +256,7 @@ static int hostap_init_sockets(struct hostap_driver_data *drv, u8 *own_addr)
 		   addr.sll_ifindex);
 
 	if (bind(drv->sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		wpa_printf(MSG_ERROR, "bind: %s", strerror(errno));
+		perror("bind");
 		return -1;
 	}
 
@@ -363,9 +361,9 @@ static int hostap_set_iface_flags(void *priv, int dev_up)
 		os_strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
 		ifr.ifr_mtu = HOSTAPD_MTU;
 		if (ioctl(drv->ioctl_sock, SIOCSIFMTU, &ifr) != 0) {
-			wpa_printf(MSG_INFO,
-				   "Setting MTU failed - trying to survive with current value: ioctl[SIOCSIFMTU]: %s",
-				   strerror(errno));
+			perror("ioctl[SIOCSIFMTU]");
+			printf("Setting MTU failed - trying to survive with "
+			       "current value\n");
 		}
 	}
 
@@ -385,8 +383,7 @@ static int hostapd_ioctl(void *priv, struct prism2_hostapd_param *param,
 	iwr.u.data.length = len;
 
 	if (ioctl(drv->ioctl_sock, PRISM2_IOCTL_HOSTAPD, &iwr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[PRISM2_IOCTL_HOSTAPD]: %s",
-			   strerror(errno));
+		perror("ioctl[PRISM2_IOCTL_HOSTAPD]");
 		return -1;
 	}
 
@@ -500,8 +497,7 @@ static int hostap_ioctl_prism2param(void *priv, int param, int value)
 	*i++ = value;
 
 	if (ioctl(drv->ioctl_sock, PRISM2_IOCTL_PRISM2_PARAM, &iwr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[PRISM2_IOCTL_PRISM2_PARAM]: %s",
-			   strerror(errno));
+		perror("ioctl[PRISM2_IOCTL_PRISM2_PARAM]");
 		return -1;
 	}
 
@@ -558,8 +554,8 @@ static int hostap_set_ssid(void *priv, const u8 *buf, int len)
 	iwr.u.essid.length = len + 1;
 
 	if (ioctl(drv->ioctl_sock, SIOCSIWESSID, &iwr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCSIWESSID,len=%d]: %s",
-			   len, strerror(errno));
+		perror("ioctl[SIOCSIWESSID]");
+		printf("len=%d\n", len);
 		return -1;
 	}
 
@@ -923,9 +919,8 @@ static int hostap_get_we_version(struct hostap_driver_data *drv)
 		sizeof(range->enc_capa);
 
 	if (ioctl(drv->ioctl_sock, SIOCGIWRANGE, &iwr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCGIWRANGE]: %s",
-			   strerror(errno));
-		os_free(range);
+		perror("ioctl[SIOCGIWRANGE]");
+		free(range);
 		return -1;
 	} else if (iwr.u.data.length >= minlen &&
 		   range->we_version_compiled >= 18) {
@@ -980,25 +975,23 @@ static void * hostap_init(struct hostapd_data *hapd,
 
 	drv->ioctl_sock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (drv->ioctl_sock < 0) {
-		wpa_printf(MSG_ERROR, "socket[PF_INET,SOCK_DGRAM]: %s",
-			   strerror(errno));
-		os_free(drv);
+		perror("socket[PF_INET,SOCK_DGRAM]");
+		free(drv);
 		return NULL;
 	}
 
 	if (hostap_ioctl_prism2param(drv, PRISM2_PARAM_HOSTAPD, 1)) {
-		wpa_printf(MSG_ERROR,
-			   "Could not enable hostapd mode for interface %s",
-			   drv->iface);
+		printf("Could not enable hostapd mode for interface %s\n",
+		       drv->iface);
 		close(drv->ioctl_sock);
-		os_free(drv);
+		free(drv);
 		return NULL;
 	}
 
 	if (hostap_init_sockets(drv, params->own_addr) ||
 	    hostap_wireless_event_init(drv)) {
 		close(drv->ioctl_sock);
-		os_free(drv);
+		free(drv);
 		return NULL;
 	}
 
@@ -1067,8 +1060,7 @@ static int hostap_set_freq(void *priv, struct hostapd_freq_params *freq)
 	iwr.u.freq.e = 0;
 
 	if (ioctl(drv->ioctl_sock, SIOCSIWFREQ, &iwr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCSIWFREQ]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOCSIWFREQ]");
 		return -1;
 	}
 

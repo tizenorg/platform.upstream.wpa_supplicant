@@ -247,48 +247,22 @@ static int wps_build_cred_ssid(struct wps_data *wps, struct wpabuf *msg)
 
 static int wps_build_cred_auth_type(struct wps_data *wps, struct wpabuf *msg)
 {
-	u16 auth_type = wps->wps->ap_auth_type;
-
-	/*
-	 * Work around issues with Windows 7 WPS implementation not liking
-	 * multiple Authentication Type bits in M7 AP Settings attribute by
-	 * showing only the most secure option from current configuration.
-	 */
-	if (auth_type & WPS_AUTH_WPA2PSK)
-		auth_type = WPS_AUTH_WPA2PSK;
-	else if (auth_type & WPS_AUTH_WPAPSK)
-		auth_type = WPS_AUTH_WPAPSK;
-	else if (auth_type & WPS_AUTH_OPEN)
-		auth_type = WPS_AUTH_OPEN;
-
-	wpa_printf(MSG_DEBUG, "WPS:  * Authentication Type (0x%x)", auth_type);
+	wpa_printf(MSG_DEBUG, "WPS:  * Authentication Type (0x%x)",
+		   wps->wps->ap_auth_type);
 	wpabuf_put_be16(msg, ATTR_AUTH_TYPE);
 	wpabuf_put_be16(msg, 2);
-	wpabuf_put_be16(msg, auth_type);
+	wpabuf_put_be16(msg, wps->wps->ap_auth_type);
 	return 0;
 }
 
 
 static int wps_build_cred_encr_type(struct wps_data *wps, struct wpabuf *msg)
 {
-	u16 encr_type = wps->wps->ap_encr_type;
-
-	/*
-	 * Work around issues with Windows 7 WPS implementation not liking
-	 * multiple Encryption Type bits in M7 AP Settings attribute by
-	 * showing only the most secure option from current configuration.
-	 */
-	if (wps->wps->ap_auth_type & (WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK)) {
-		if (encr_type & WPS_ENCR_AES)
-			encr_type = WPS_ENCR_AES;
-		else if (encr_type & WPS_ENCR_TKIP)
-			encr_type = WPS_ENCR_TKIP;
-	}
-
-	wpa_printf(MSG_DEBUG, "WPS:  * Encryption Type (0x%x)", encr_type);
+	wpa_printf(MSG_DEBUG, "WPS:  * Encryption Type (0x%x)",
+		   wps->wps->ap_encr_type);
 	wpabuf_put_be16(msg, ATTR_ENCR_TYPE);
 	wpabuf_put_be16(msg, 2);
-	wpabuf_put_be16(msg, encr_type);
+	wpabuf_put_be16(msg, wps->wps->ap_encr_type);
 	return 0;
 }
 

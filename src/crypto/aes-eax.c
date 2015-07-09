@@ -71,7 +71,7 @@ int aes_128_eax_encrypt(const u8 *key, const u8 *nonce, size_t nonce_len,
 
 	ret = 0;
 fail:
-	bin_clear_free(buf, buf_len);
+	os_free(buf);
 
 	return ret;
 }

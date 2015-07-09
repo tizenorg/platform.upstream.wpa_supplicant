@@ -294,7 +294,7 @@ static void bgscan_learn_timeout(void *eloop_ctx, void *timeout_ctx)
 			int ret;
 			ret = os_snprintf(pos, msg + sizeof(msg) - pos, " %d",
 					  freqs[i]);
-			if (os_snprintf_error(msg + sizeof(msg) - pos, ret))
+			if (ret < 0 || ret >= msg + sizeof(msg) - pos)
 				break;
 			pos += ret;
 		}

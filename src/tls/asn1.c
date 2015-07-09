@@ -166,7 +166,7 @@ void asn1_oid_to_str(const struct asn1_oid *oid, char *buf, size_t len)
 		ret = os_snprintf(pos, buf + len - pos,
 				  "%s%lu",
 				  i == 0 ? "" : ".", oid->oid[i]);
-		if (os_snprintf_error(buf + len - pos, ret))
+		if (ret < 0 || ret >= buf + len - pos)
 			break;
 		pos += ret;
 	}

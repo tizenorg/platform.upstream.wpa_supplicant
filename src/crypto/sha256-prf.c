@@ -95,6 +95,4 @@ void sha256_prf_bits(const u8 *key, size_t key_len, const char *label,
 		u8 mask = 0xff << (8 - buf_len_bits % 8);
 		buf[pos - 1] &= mask;
 	}
-
-	os_memset(hash, 0, sizeof(hash));
 }

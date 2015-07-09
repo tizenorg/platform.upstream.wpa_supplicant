@@ -12,7 +12,6 @@
 #include "signalbar.h"
 #include "wpagui.h"
 #include "networkconfig.h"
-#include "scanresultsitem.h"
 
 
 ScanResults::ScanResults(QWidget *parent, const char *, bool, Qt::WFlags)
@@ -96,7 +95,7 @@ void ScanResults::updateResults()
 				ssid = (*it).mid(pos);
 		}
 
-		ScanResultsItem *item = new ScanResultsItem(scanResultsWidget);
+		QTreeWidgetItem *item = new QTreeWidgetItem(scanResultsWidget);
 		if (item) {
 			item->setText(0, ssid);
 			item->setText(1, bssid);

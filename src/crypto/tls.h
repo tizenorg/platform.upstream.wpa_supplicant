@@ -41,12 +41,8 @@ enum tls_fail_reason {
 	TLS_FAIL_ALTSUBJECT_MISMATCH = 6,
 	TLS_FAIL_BAD_CERTIFICATE = 7,
 	TLS_FAIL_SERVER_CHAIN_PROBE = 8,
-	TLS_FAIL_DOMAIN_SUFFIX_MISMATCH = 9,
-	TLS_FAIL_DOMAIN_MISMATCH = 10,
+	TLS_FAIL_DOMAIN_SUFFIX_MISMATCH = 9
 };
-
-
-#define TLS_MAX_ALT_SUBJECT 10
 
 union tls_event_data {
 	struct {
@@ -63,8 +59,6 @@ union tls_event_data {
 		const struct wpabuf *cert;
 		const u8 *hash;
 		size_t hash_len;
-		const char *altsubject[TLS_MAX_ALT_SUBJECT];
-		int num_altsubject;
 	} peer_cert;
 
 	struct {
@@ -80,7 +74,6 @@ struct tls_config {
 	const char *pkcs11_module_path;
 	int fips_mode;
 	int cert_in_cb;
-	const char *openssl_ciphers;
 
 	void (*event_cb)(void *ctx, enum tls_event ev,
 			 union tls_event_data *data);
@@ -94,7 +87,6 @@ struct tls_config {
 #define TLS_CONN_REQUIRE_OCSP BIT(4)
 #define TLS_CONN_DISABLE_TLSv1_1 BIT(5)
 #define TLS_CONN_DISABLE_TLSv1_2 BIT(6)
-#define TLS_CONN_EAP_FAST BIT(7)
 
 /**
  * struct tls_connection_params - Parameters for TLS connection
@@ -108,11 +100,7 @@ struct tls_config {
  * @altsubject_match: String to match in the alternative subject of the peer
  * certificate or %NULL to allow all alternative subjects
  * @suffix_match: String to suffix match in the dNSName or CN of the peer
- * certificate or %NULL to allow all domain names. This may allow subdomains an
- * wildcard certificates. Each domain name label must have a full match.
- * @domain_match: String to match in the dNSName or CN of the peer
- * certificate or %NULL to allow all domain names. This requires a full,
- * case-insensitive match.
+ * certificate or %NULL to allow all domain names
  * @client_cert: File or reference name for client X.509 certificate in PEM or
  * DER format
  * @client_cert_blob: client_cert as inlined data or %NULL if not used
@@ -135,7 +123,6 @@ struct tls_config {
  * specific for now)
  * @cert_id: the certificate's id when using engine
  * @ca_cert_id: the CA certificate's id when using engine
- * @openssl_ciphers: OpenSSL cipher configuration
  * @flags: Parameter options (TLS_CONN_*)
  * @ocsp_stapling_response: DER encoded file with cached OCSP stapling response
  *	or %NULL if OCSP is not enabled
@@ -156,7 +143,6 @@ struct tls_connection_params {
 	const char *subject_match;
 	const char *altsubject_match;
 	const char *suffix_match;
-	const char *domain_match;
 	const char *client_cert;
 	const u8 *client_cert_blob;
 	size_t client_cert_blob_len;
@@ -175,7 +161,6 @@ struct tls_connection_params {
 	const char *key_id;
 	const char *cert_id;
 	const char *ca_cert_id;
-	const char *openssl_ciphers;
 
 	unsigned int flags;
 	const char *ocsp_stapling_response;
@@ -566,7 +551,5 @@ void tls_connection_set_log_cb(struct tls_connection *conn,
 #define TLS_DHE_NON_PRIME BIT(7)
 
 void tls_connection_set_test_flags(struct tls_connection *conn, u32 flags);
-
-int tls_get_library_version(char *buf, size_t buf_len);
 
 #endif /* TLS_H */

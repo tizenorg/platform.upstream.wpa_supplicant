@@ -185,7 +185,7 @@ static void hostapd_wps_pin_needed_cb(void *ctx, const u8 *uuid_e,
 			  dev->model_number, dev->serial_number,
 			  wps_dev_type_bin2str(dev->pri_dev_type, devtype,
 					       sizeof(devtype)));
-	if (!os_snprintf_error(sizeof(txt), len))
+	if (len > 0 && len < (int) sizeof(txt))
 		wpa_msg(hapd->msg_ctx, MSG_INFO, "%s", txt);
 
 	if (hapd->conf->wps_pin_requests) {
@@ -362,9 +362,10 @@ static int hapd_wps_reconfig_in_memory(struct hostapd_data *hapd,
 			if (bss->ssid.wpa_passphrase)
 				os_memcpy(bss->ssid.wpa_passphrase, cred->key,
 					  cred->key_len);
-			hostapd_config_clear_wpa_psk(&bss->ssid.wpa_psk);
+			os_free(bss->ssid.wpa_psk);
+			bss->ssid.wpa_psk = NULL;
 		} else if (cred->key_len == 64) {
-			hostapd_config_clear_wpa_psk(&bss->ssid.wpa_psk);
+			os_free(bss->ssid.wpa_psk);
 			bss->ssid.wpa_psk =
 				os_zalloc(sizeof(struct hostapd_wpa_psk));
 			if (bss->ssid.wpa_psk &&
@@ -1048,7 +1049,7 @@ int hostapd_init_wps(struct hostapd_data *hapd,
 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X)
 			wps->auth_types |= WPS_AUTH_WPA2;
 
-		if (conf->rsn_pairwise & (WPA_CIPHER_CCMP | WPA_CIPHER_GCMP))
+		if (conf->rsn_pairwise & WPA_CIPHER_CCMP)
 			wps->encr_types |= WPS_ENCR_AES;
 		if (conf->rsn_pairwise & WPA_CIPHER_TKIP)
 			wps->encr_types |= WPS_ENCR_TKIP;
@@ -1582,7 +1583,7 @@ int hostapd_wps_ap_pin_set(struct hostapd_data *hapd, const char *pin,
 	int ret;
 
 	ret = os_snprintf(data.pin_txt, sizeof(data.pin_txt), "%s", pin);
-	if (os_snprintf_error(sizeof(data.pin_txt), ret))
+	if (ret < 0 || ret >= (int) sizeof(data.pin_txt))
 		return -1;
 	data.timeout = timeout;
 	return hostapd_wps_for_each(hapd, wps_ap_pin_set, &data);

@@ -94,9 +94,10 @@ struct wpa_ctrl * wpa_ctrl_open(const char *ctrl_path)
 	if (ctrl_path == NULL)
 		return NULL;
 
-	ctrl = os_zalloc(sizeof(*ctrl));
+	ctrl = os_malloc(sizeof(*ctrl));
 	if (ctrl == NULL)
 		return NULL;
+	os_memset(ctrl, 0, sizeof(*ctrl));
 
 	ctrl->s = socket(PF_UNIX, SOCK_DGRAM, 0);
 	if (ctrl->s < 0) {
@@ -111,7 +112,7 @@ try_again:
 			  CONFIG_CTRL_IFACE_CLIENT_DIR "/"
 			  CONFIG_CTRL_IFACE_CLIENT_PREFIX "%d-%d",
 			  (int) getpid(), counter);
-	if (os_snprintf_error(sizeof(ctrl->local.sun_path), ret)) {
+	if (ret < 0 || (size_t) ret >= sizeof(ctrl->local.sun_path)) {
 		close(ctrl->s);
 		os_free(ctrl);
 		return NULL;
@@ -282,9 +283,10 @@ struct wpa_ctrl * wpa_ctrl_open(const char *ctrl_path)
 	struct hostent *h;
 #endif /* CONFIG_CTRL_IFACE_UDP_REMOTE */
 
-	ctrl = os_zalloc(sizeof(*ctrl));
+	ctrl = os_malloc(sizeof(*ctrl));
 	if (ctrl == NULL)
 		return NULL;
+	os_memset(ctrl, 0, sizeof(*ctrl));
 
 #ifdef CONFIG_CTRL_IFACE_UDP_IPV6
 	ctrl->s = socket(PF_INET6, SOCK_DGRAM, 0);
@@ -641,7 +643,7 @@ struct wpa_ctrl * wpa_ctrl_open(const char *ctrl_path)
 		ret = os_snprintf(name, 256, NAMED_PIPE_PREFIX "-%s",
 				  ctrl_path);
 #endif /* UNICODE */
-	if (os_snprintf_error(256, ret)) {
+	if (ret < 0 || ret >= 256) {
 		os_free(ctrl);
 		return NULL;
 	}

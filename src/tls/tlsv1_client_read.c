@@ -440,7 +440,6 @@ static int tlsv1_process_diffie_hellman(struct tlsv1_client *conn,
 	const u8 *pos, *end, *server_params, *server_params_end;
 	u8 alert;
 	unsigned int bits;
-	u16 val;
 
 	tlsv1_client_free_dh(conn);
 
@@ -450,13 +449,13 @@ static int tlsv1_process_diffie_hellman(struct tlsv1_client *conn,
 	if (end - pos < 3)
 		goto fail;
 	server_params = pos;
-	val = WPA_GET_BE16(pos);
+	conn->dh_p_len = WPA_GET_BE16(pos);
 	pos += 2;
-	if (val == 0 || val > (size_t) (end - pos)) {
-		wpa_printf(MSG_DEBUG, "TLSv1: Invalid dh_p length %u", val);
+	if (conn->dh_p_len == 0 || end - pos < (int) conn->dh_p_len) {
+		wpa_printf(MSG_DEBUG, "TLSv1: Invalid dh_p length %lu",
+			   (unsigned long) conn->dh_p_len);
 		goto fail;
 	}
-	conn->dh_p_len = val;
 	bits = count_bits(pos, conn->dh_p_len);
 	if (bits < 768) {
 		wpa_printf(MSG_INFO, "TLSv1: Reject under 768-bit DH prime (insecure; only %u bits)",
@@ -475,11 +474,10 @@ static int tlsv1_process_diffie_hellman(struct tlsv1_client *conn,
 
 	if (end - pos < 3)
 		goto fail;
-	val = WPA_GET_BE16(pos);
+	conn->dh_g_len = WPA_GET_BE16(pos);
 	pos += 2;
-	if (val == 0 || val > (size_t) (end - pos))
+	if (conn->dh_g_len == 0 || end - pos < (int) conn->dh_g_len)
 		goto fail;
-	conn->dh_g_len = val;
 	conn->dh_g = os_malloc(conn->dh_g_len);
 	if (conn->dh_g == NULL)
 		goto fail;
@@ -492,11 +490,10 @@ static int tlsv1_process_diffie_hellman(struct tlsv1_client *conn,
 
 	if (end - pos < 3)
 		goto fail;
-	val = WPA_GET_BE16(pos);
+	conn->dh_ys_len = WPA_GET_BE16(pos);
 	pos += 2;
-	if (val == 0 || val > (size_t) (end - pos))
+	if (conn->dh_ys_len == 0 || end - pos < (int) conn->dh_ys_len)
 		goto fail;
-	conn->dh_ys_len = val;
 	conn->dh_ys = os_malloc(conn->dh_ys_len);
 	if (conn->dh_ys == NULL)
 		goto fail;
