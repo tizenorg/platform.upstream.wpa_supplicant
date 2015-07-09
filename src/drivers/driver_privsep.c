@@ -35,7 +35,7 @@ static int wpa_priv_reg_cmd(struct wpa_driver_privsep_data *drv, int cmd)
 		     (struct sockaddr *) &drv->priv_addr,
 		     sizeof(drv->priv_addr));
 	if (res < 0)
-		wpa_printf(MSG_ERROR, "sendto: %s", strerror(errno));
+		perror("sendto");
 	return res < 0 ? -1 : 0;
 }
 
@@ -59,8 +59,7 @@ static int wpa_priv_cmd(struct wpa_driver_privsep_data *drv, int cmd,
 	msg.msg_namelen = sizeof(drv->priv_addr);
 
 	if (sendmsg(drv->cmd_socket, &msg, 0) < 0) {
-		wpa_printf(MSG_ERROR, "sendmsg(cmd_socket): %s",
-			   strerror(errno));
+		perror("sendmsg(cmd_socket)");
 		return -1;
 	}
 
@@ -75,15 +74,14 @@ static int wpa_priv_cmd(struct wpa_driver_privsep_data *drv, int cmd,
 		tv.tv_usec = 0;
 		res = select(drv->cmd_socket + 1, &rfds, NULL, NULL, &tv);
 		if (res < 0 && errno != EINTR) {
-			wpa_printf(MSG_ERROR, "select: %s", strerror(errno));
+			perror("select");
 			return -1;
 		}
 
 		if (FD_ISSET(drv->cmd_socket, &rfds)) {
 			res = recv(drv->cmd_socket, reply, *reply_len, 0);
 			if (res < 0) {
-				wpa_printf(MSG_ERROR, "recv: %s",
-					   strerror(errno));
+				perror("recv");
 				return -1;
 			}
 			*reply_len = res;
@@ -230,7 +228,7 @@ static int wpa_driver_privsep_associate(
 
 	wpa_printf(MSG_DEBUG, "%s: priv=%p freq=%d pairwise_suite=%d "
 		   "group_suite=%d key_mgmt_suite=%d auth_alg=%d mode=%d",
-		   __func__, priv, params->freq.freq, params->pairwise_suite,
+		   __func__, priv, params->freq, params->pairwise_suite,
 		   params->group_suite, params->key_mgmt_suite,
 		   params->auth_alg, params->mode);
 
@@ -243,9 +241,7 @@ static int wpa_driver_privsep_associate(
 		os_memcpy(data->bssid, params->bssid, ETH_ALEN);
 	os_memcpy(data->ssid, params->ssid, params->ssid_len);
 	data->ssid_len = params->ssid_len;
-	data->hwmode = params->freq.mode;
-	data->freq = params->freq.freq;
-	data->channel = params->freq.channel;
+	data->freq = params->freq;
 	data->pairwise_suite = params->pairwise_suite;
 	data->group_suite = params->group_suite;
 	data->key_mgmt_suite = params->key_mgmt_suite;
@@ -443,8 +439,7 @@ static void wpa_driver_privsep_receive(int sock, void *eloop_ctx,
 	res = recvfrom(sock, buf, buflen, 0,
 		       (struct sockaddr *) &from, &fromlen);
 	if (res < 0) {
-		wpa_printf(MSG_ERROR, "recvfrom(priv_socket): %s",
-			   strerror(errno));
+		perror("recvfrom(priv_socket)");
 		os_free(buf);
 		return;
 	}
@@ -634,7 +629,7 @@ static int wpa_driver_privsep_set_param(void *priv, const char *param)
 
 	drv->priv_socket = socket(PF_UNIX, SOCK_DGRAM, 0);
 	if (drv->priv_socket < 0) {
-		wpa_printf(MSG_ERROR, "socket(PF_UNIX): %s", strerror(errno));
+		perror("socket(PF_UNIX)");
 		os_free(drv->own_socket_path);
 		drv->own_socket_path = NULL;
 		return -1;
@@ -645,9 +640,7 @@ static int wpa_driver_privsep_set_param(void *priv, const char *param)
 	os_strlcpy(addr.sun_path, drv->own_socket_path, sizeof(addr.sun_path));
 	if (bind(drv->priv_socket, (struct sockaddr *) &addr, sizeof(addr)) <
 	    0) {
-		wpa_printf(MSG_ERROR,
-			   "privsep-set-params priv-sock: bind(PF_UNIX): %s",
-			   strerror(errno));
+		perror("privsep-set-params priv-sock: bind(PF_UNIX)");
 		close(drv->priv_socket);
 		drv->priv_socket = -1;
 		unlink(drv->own_socket_path);
@@ -661,7 +654,7 @@ static int wpa_driver_privsep_set_param(void *priv, const char *param)
 
 	drv->cmd_socket = socket(PF_UNIX, SOCK_DGRAM, 0);
 	if (drv->cmd_socket < 0) {
-		wpa_printf(MSG_ERROR, "socket(PF_UNIX): %s", strerror(errno));
+		perror("socket(PF_UNIX)");
 		os_free(drv->own_cmd_path);
 		drv->own_cmd_path = NULL;
 		return -1;
@@ -672,9 +665,7 @@ static int wpa_driver_privsep_set_param(void *priv, const char *param)
 	os_strlcpy(addr.sun_path, drv->own_cmd_path, sizeof(addr.sun_path));
 	if (bind(drv->cmd_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 	{
-		wpa_printf(MSG_ERROR,
-			   "privsep-set-params cmd-sock: bind(PF_UNIX): %s",
-			   strerror(errno));
+		perror("privsep-set-params cmd-sock: bind(PF_UNIX)");
 		close(drv->cmd_socket);
 		drv->cmd_socket = -1;
 		unlink(drv->own_cmd_path);

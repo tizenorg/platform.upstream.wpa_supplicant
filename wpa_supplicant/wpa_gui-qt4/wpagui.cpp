@@ -23,19 +23,19 @@
 #include "userdatarequest.h"
 #include "networkconfig.h"
 
-
-#ifndef QT_NO_DEBUG
-#define debug(M, ...) qDebug("DEBUG %d: " M, __LINE__, ##__VA_ARGS__)
-#else
-#define debug(M, ...) do {} while (0)
+#if 1
+/* Silence stdout */
+#define printf wpagui_printf
+static int wpagui_printf(const char *, ...)
+{
+	return 0;
+}
 #endif
-
 
 WpaGui::WpaGui(QApplication *_app, QWidget *parent, const char *, Qt::WFlags)
 	: QMainWindow(parent), app(_app)
 {
 	setupUi(this);
-	this->setWindowFlags(Qt::Dialog);
 
 #ifdef CONFIG_NATIVE_WINDOWS
 	fileStopServiceAction = new QAction(this);
@@ -129,7 +129,6 @@ WpaGui::WpaGui(QApplication *_app, QWidget *parent, const char *, Qt::WFlags)
 	udr = NULL;
 	tray_icon = NULL;
 	startInTray = false;
-	quietMode = false;
 	ctrl_iface = NULL;
 	ctrl_conn = NULL;
 	monitor_conn = NULL;
@@ -162,8 +161,8 @@ WpaGui::WpaGui(QApplication *_app, QWidget *parent, const char *, Qt::WFlags)
 	timer->start(1000);
 
 	if (openCtrlConnection(ctrl_iface) < 0) {
-		debug("Failed to open control connection to "
-		      "wpa_supplicant.");
+		printf("Failed to open control connection to "
+		       "wpa_supplicant.\n");
 	}
 
 	updateStatus();
@@ -234,7 +233,7 @@ void WpaGui::parse_argv()
 {
 	int c;
 	for (;;) {
-		c = getopt(qApp->argc(), qApp->argv(), "i:p:tq");
+		c = getopt(qApp->argc(), qApp->argv(), "i:p:t");
 		if (c < 0)
 			break;
 		switch (c) {
@@ -248,9 +247,6 @@ void WpaGui::parse_argv()
 			break;
 		case 't':
 			startInTray = true;
-			break;
-		case 'q':
-			quietMode = true;
 			break;
 		}
 	}
@@ -294,8 +290,8 @@ int WpaGui::openCtrlConnection(const char *ifname)
 				if (strcmp(dent->d_name, ".") == 0 ||
 				    strcmp(dent->d_name, "..") == 0)
 					continue;
-				debug("Selected interface '%s'",
-				      dent->d_name);
+				printf("Selected interface '%s'\n",
+				       dent->d_name);
 				ctrl_iface = strdup(dent->d_name);
 				break;
 			}
@@ -372,7 +368,7 @@ int WpaGui::openCtrlConnection(const char *ifname)
 		monitor_conn = NULL;
 	}
 
-	debug("Trying to connect to '%s'", cfile);
+	printf("Trying to connect to '%s'\n", cfile);
 	ctrl_conn = wpa_ctrl_open(cfile);
 	if (ctrl_conn == NULL) {
 		free(cfile);
@@ -385,7 +381,7 @@ int WpaGui::openCtrlConnection(const char *ifname)
 		return -1;
 	}
 	if (wpa_ctrl_attach(monitor_conn)) {
-		debug("Failed to attach to wpa_supplicant");
+		printf("Failed to attach to wpa_supplicant\n");
 		wpa_ctrl_close(monitor_conn);
 		monitor_conn = NULL;
 		wpa_ctrl_close(ctrl_conn);
@@ -446,9 +442,9 @@ int WpaGui::ctrlRequest(const char *cmd, char *buf, size_t *buflen)
 		return -3;
 	ret = wpa_ctrl_request(ctrl_conn, cmd, strlen(cmd), buf, buflen, NULL);
 	if (ret == -2)
-		debug("'%s' command timed out.", cmd);
+		printf("'%s' command timed out.\n", cmd);
 	else if (ret < 0)
-		debug("'%s' command failed.", cmd);
+		printf("'%s' command failed.\n", cmd);
 
 	return ret;
 }
@@ -495,7 +491,6 @@ void WpaGui::updateStatus()
 		textSsid->clear();
 		textBssid->clear();
 		textIpAddress->clear();
-		updateTrayToolTip(tr("no status information"));
 
 #ifdef CONFIG_NATIVE_WINDOWS
 		static bool first = true;
@@ -543,7 +538,6 @@ void WpaGui::updateStatus()
 			} else if (strcmp(start, "ssid") == 0) {
 				ssid_updated = true;
 				textSsid->setText(pos);
-				updateTrayToolTip(pos + tr(" (associated)"));
 			} else if (strcmp(start, "ip_address") == 0) {
 				ipaddr_updated = true;
 				textIpAddress->setText(pos);
@@ -591,10 +585,8 @@ void WpaGui::updateStatus()
 		textStatus->clear();
 	if (!auth_updated)
 		textAuthentication->clear();
-	if (!ssid_updated) {
+	if (!ssid_updated)
 		textSsid->clear();
-		updateTrayToolTip(tr("(not-associated)"));
-	}
 	if (!bssid_updated)
 		textBssid->clear();
 	if (!ipaddr_updated)
@@ -704,13 +696,13 @@ void WpaGui::updateNetworks()
 
 void WpaGui::helpIndex()
 {
-	debug("helpIndex");
+	printf("helpIndex\n");
 }
 
 
 void WpaGui::helpContents()
 {
-	debug("helpContents");
+	printf("helpContents\n");
 }
 
 
@@ -805,9 +797,9 @@ void WpaGui::ping()
 
 	len = sizeof(buf) - 1;
 	if (ctrlRequest("PING", buf, &len) < 0) {
-		debug("PING failed - trying to reconnect");
+		printf("PING failed - trying to reconnect\n");
 		if (openCtrlConnection(ctrl_iface) >= 0) {
-			debug("Reconnected successfully");
+			printf("Reconnected successfully\n");
 			pingsToStatusUpdate = 0;
 		}
 	}
@@ -1001,8 +993,8 @@ void WpaGui::enableNetwork(const QString &sel)
 	if (cmd.contains(QRegExp("^\\d+:")))
 		cmd.truncate(cmd.indexOf(':'));
 	else if (!cmd.startsWith("all")) {
-		debug("Invalid editNetwork '%s'",
-		      cmd.toAscii().constData());
+		printf("Invalid editNetwork '%s'\n",
+		       cmd.toAscii().constData());
 		return;
 	}
 	cmd.prepend("ENABLE_NETWORK ");
@@ -1020,8 +1012,8 @@ void WpaGui::disableNetwork(const QString &sel)
 	if (cmd.contains(QRegExp("^\\d+:")))
 		cmd.truncate(cmd.indexOf(':'));
 	else if (!cmd.startsWith("all")) {
-		debug("Invalid editNetwork '%s'",
-		      cmd.toAscii().constData());
+		printf("Invalid editNetwork '%s'\n",
+		       cmd.toAscii().constData());
 		return;
 	}
 	cmd.prepend("DISABLE_NETWORK ");
@@ -1110,8 +1102,8 @@ void WpaGui::removeNetwork(const QString &sel)
 	if (cmd.contains(QRegExp("^\\d+:")))
 		cmd.truncate(cmd.indexOf(':'));
 	else if (!cmd.startsWith("all")) {
-		debug("Invalid editNetwork '%s'",
-		      cmd.toAscii().constData());
+		printf("Invalid editNetwork '%s'\n",
+		       cmd.toAscii().constData());
 		return;
 	}
 	cmd.prepend("REMOVE_NETWORK ");
@@ -1174,8 +1166,8 @@ int WpaGui::getNetworkDisabled(const QString &sel)
 	size_t reply_len = sizeof(reply) - 1;
 	int pos = cmd.indexOf(':');
 	if (pos < 0) {
-		debug("Invalid getNetworkDisabled '%s'",
-		      cmd.toAscii().constData());
+		printf("Invalid getNetworkDisabled '%s'\n",
+		       cmd.toAscii().constData());
 		return -1;
 	}
 	cmd.truncate(pos);
@@ -1266,8 +1258,8 @@ void WpaGui::saveConfig()
 void WpaGui::selectAdapter( const QString & sel )
 {
 	if (openCtrlConnection(sel.toAscii().constData()) < 0)
-		debug("Failed to open control connection to "
-		      "wpa_supplicant.");
+		printf("Failed to open control connection to "
+		       "wpa_supplicant.\n");
 	updateStatus();
 	updateNetworks();
 }
@@ -1278,6 +1270,7 @@ void WpaGui::createTrayIcon(bool trayOnly)
 	QApplication::setQuitOnLastWindowClosed(false);
 
 	tray_icon = new QSystemTrayIcon(this);
+	tray_icon->setToolTip(qAppName() + tr(" - wpa_supplicant user interface"));
 	if (QImageReader::supportedImageFormats().contains(QByteArray("svg")))
 		tray_icon->setIcon(QIcon(":/icons/wpa_gui.svg"));
 	else
@@ -1339,7 +1332,7 @@ void WpaGui::showTrayMessage(QSystemTrayIcon::MessageIcon type, int sec,
 	if (!QSystemTrayIcon::supportsMessages())
 		return;
 
-	if (isVisible() || !tray_icon || !tray_icon->isVisible() || quietMode)
+	if (isVisible() || !tray_icon || !tray_icon->isVisible())
 		return;
 
 	tray_icon->showMessage(qAppName(), msg, type, sec * 1000);
@@ -1411,13 +1404,6 @@ void WpaGui::showTrayStatus()
 
 	if (!msg.isEmpty())
 		showTrayMessage(QSystemTrayIcon::Information, 10, msg);
-}
-
-
-void WpaGui::updateTrayToolTip(const QString &msg)
-{
-	if (tray_icon)
-		tray_icon->setToolTip(msg);
 }
 
 
@@ -1699,13 +1685,13 @@ bool WpaGui::serviceRunning()
 
 	scm = OpenSCManager(0, 0, SC_MANAGER_CONNECT);
 	if (!scm) {
-		debug("OpenSCManager failed: %d", (int) GetLastError());
+		printf("OpenSCManager failed: %d\n", (int) GetLastError());
 		return false;
 	}
 
 	svc = OpenService(scm, WPASVC_NAME, SERVICE_QUERY_STATUS);
 	if (!svc) {
-		debug("OpenService failed: %d", (int) GetLastError());
+		printf("OpenService failed: %d\n\n", (int) GetLastError());
 		CloseServiceHandle(scm);
 		return false;
 	}

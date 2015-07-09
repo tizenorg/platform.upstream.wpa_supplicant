@@ -91,8 +91,7 @@ static u16 wpa_driver_roboswitch_mdio_read(
 	mii->reg_num = reg;
 
 	if (ioctl(drv->fd, SIOCGMIIREG, &drv->ifr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCGMIIREG]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOCGMIIREG]");
 		return 0x00;
 	}
 	return mii->val_out;
@@ -109,8 +108,7 @@ static void wpa_driver_roboswitch_mdio_write(
 	mii->val_in = val;
 
 	if (ioctl(drv->fd, SIOCSMIIREG, &drv->ifr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCSMIIREG]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOCSMIIREG");
 	}
 }
 
@@ -396,8 +394,7 @@ static void * wpa_driver_roboswitch_init(void *ctx, const char *ifname)
 	os_memset(&drv->ifr, 0, sizeof(drv->ifr));
 	os_strlcpy(drv->ifr.ifr_name, drv->ifname, IFNAMSIZ);
 	if (ioctl(drv->fd, SIOCGMIIPHY, &drv->ifr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCGMIIPHY]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOCGMIIPHY]");
 		os_free(drv);
 		return NULL;
 	}

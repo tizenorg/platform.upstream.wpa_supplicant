@@ -251,16 +251,13 @@ void format_date(struct wpabuf *buf)
  * use for constructing UUIDs for subscriptions. Presumably any method from
  * rfc4122 is good enough; I've chosen random number method.
  */
-static int uuid_make(u8 uuid[UUID_LEN])
+static void uuid_make(u8 uuid[UUID_LEN])
 {
-	if (os_get_random(uuid, UUID_LEN) < 0)
-		return -1;
+	os_get_random(uuid, UUID_LEN);
 
 	/* Replace certain bits as specified in rfc4122 or X.667 */
 	uuid[6] &= 0x0f; uuid[6] |= (4 << 4);   /* version 4 == random gen */
 	uuid[8] &= 0x3f; uuid[8] |= 0x80;
-
-	return 0;
 }
 
 
@@ -703,12 +700,10 @@ struct subscription * subscription_start(struct upnp_wps_device_sm *sm,
 	if (dl_list_len(&sm->subscriptions) >= MAX_SUBSCRIPTIONS) {
 		s = dl_list_first(&sm->subscriptions, struct subscription,
 				  list);
-		if (s) {
-			wpa_printf(MSG_INFO,
-				   "WPS UPnP: Too many subscriptions, trashing oldest");
-			dl_list_del(&s->list);
-			subscription_destroy(s);
-		}
+		wpa_printf(MSG_INFO, "WPS UPnP: Too many subscriptions, "
+			   "trashing oldest");
+		dl_list_del(&s->list);
+		subscription_destroy(s);
 	}
 
 	s = os_zalloc(sizeof(*s));
@@ -719,10 +714,7 @@ struct subscription * subscription_start(struct upnp_wps_device_sm *sm,
 
 	s->sm = sm;
 	s->timeout_time = expire;
-	if (uuid_make(s->uuid) < 0) {
-		subscription_destroy(s);
-		return NULL;
-	}
+	uuid_make(s->uuid);
 	subscr_addr_list_create(s, callback_urls);
 	if (dl_list_empty(&s->addr_list)) {
 		wpa_printf(MSG_DEBUG, "WPS UPnP: No valid callback URLs in "

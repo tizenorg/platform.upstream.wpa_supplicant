@@ -111,8 +111,8 @@ static void ap_ap_hash_del(struct hostapd_iface *iface, struct ap_info *ap)
 	if (s->hnext != NULL)
 		s->hnext = s->hnext->hnext;
 	else
-		wpa_printf(MSG_INFO, "AP: could not remove AP " MACSTR
-			   " from hash table",  MAC2STR(ap->addr));
+		printf("AP: could not remove AP " MACSTR " from hash table\n",
+		       MAC2STR(ap->addr));
 }
 
 
@@ -182,8 +182,7 @@ void ap_list_process_beacon(struct hostapd_iface *iface,
 	if (!ap) {
 		ap = ap_ap_add(iface, mgmt->bssid);
 		if (!ap) {
-			wpa_printf(MSG_INFO,
-				   "Failed to allocate AP information entry");
+			printf("Failed to allocate AP information entry\n");
 			return;
 		}
 		new_ap = 1;

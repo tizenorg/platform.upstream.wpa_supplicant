@@ -242,10 +242,8 @@ static int eloop_sock_table_add_sock(struct eloop_sock_table *table,
 	eloop_trace_sock_remove_ref(table);
 	tmp = os_realloc_array(table->table, table->count + 1,
 			       sizeof(struct eloop_sock));
-	if (tmp == NULL) {
-		eloop_trace_sock_add_ref(table);
+	if (tmp == NULL)
 		return -1;
-	}
 
 	tmp[table->count].sock = sock;
 	tmp[table->count].eloop_data = eloop_data;

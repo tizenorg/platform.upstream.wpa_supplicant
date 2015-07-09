@@ -98,11 +98,5 @@ int wpas_module_tests(void)
 			ret = -1;
 	}
 
-	{
-		int crypto_module_tests(void);
-		if (crypto_module_tests() < 0)
-			ret = -1;
-	}
-
 	return ret;
 }

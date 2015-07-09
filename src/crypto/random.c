@@ -232,8 +232,12 @@ int random_pool_ready(void)
 	 */
 	fd = open("/dev/random", O_RDONLY | O_NONBLOCK);
 	if (fd < 0) {
+#ifndef CONFIG_NO_STDOUT_DEBUG
+		int error = errno;
+		perror("open(/dev/random)");
 		wpa_printf(MSG_ERROR, "random: Cannot open /dev/random: %s",
-			   strerror(errno));
+			   strerror(error));
+#endif /* CONFIG_NO_STDOUT_DEBUG */
 		return -1;
 	}
 
@@ -413,8 +417,12 @@ void random_init(const char *entropy_file)
 
 	random_fd = open("/dev/random", O_RDONLY | O_NONBLOCK);
 	if (random_fd < 0) {
+#ifndef CONFIG_NO_STDOUT_DEBUG
+		int error = errno;
+		perror("open(/dev/random)");
 		wpa_printf(MSG_ERROR, "random: Cannot open /dev/random: %s",
-			   strerror(errno));
+			   strerror(error));
+#endif /* CONFIG_NO_STDOUT_DEBUG */
 		return;
 	}
 	wpa_printf(MSG_DEBUG, "random: Trying to read entropy from "

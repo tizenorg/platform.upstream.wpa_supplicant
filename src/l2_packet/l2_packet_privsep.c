@@ -44,7 +44,7 @@ static int wpa_priv_cmd(struct l2_packet_data *l2, int cmd,
 	msg.msg_namelen = sizeof(l2->priv_addr);
 
 	if (sendmsg(l2->fd, &msg, 0) < 0) {
-		wpa_printf(MSG_ERROR, "L2: sendmsg(cmd): %s", strerror(errno));
+		perror("L2: sendmsg(cmd)");
 		return -1;
 	}
 
@@ -82,8 +82,7 @@ int l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
 	msg.msg_namelen = sizeof(l2->priv_addr);
 
 	if (sendmsg(l2->fd, &msg, 0) < 0) {
-		wpa_printf(MSG_ERROR, "L2: sendmsg(packet_send): %s",
-			   strerror(errno));
+		perror("L2: sendmsg(packet_send)");
 		return -1;
 	}
 
@@ -103,8 +102,7 @@ static void l2_packet_receive(int sock, void *eloop_ctx, void *sock_ctx)
 	res = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *) &from,
 		       &fromlen);
 	if (res < 0) {
-		wpa_printf(MSG_ERROR, "l2_packet_receive - recvfrom: %s",
-			   strerror(errno));
+		perror("l2_packet_receive - recvfrom");
 		return;
 	}
 	if (res < ETH_ALEN) {
@@ -164,7 +162,7 @@ struct l2_packet_data * l2_packet_init(
 
 	l2->fd = socket(PF_UNIX, SOCK_DGRAM, 0);
 	if (l2->fd < 0) {
-		wpa_printf(MSG_ERROR, "socket(PF_UNIX): %s", strerror(errno));
+		perror("socket(PF_UNIX)");
 		os_free(l2->own_socket_path);
 		l2->own_socket_path = NULL;
 		os_free(l2);
@@ -175,8 +173,7 @@ struct l2_packet_data * l2_packet_init(
 	addr.sun_family = AF_UNIX;
 	os_strlcpy(addr.sun_path, l2->own_socket_path, sizeof(addr.sun_path));
 	if (bind(l2->fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		wpa_printf(MSG_ERROR, "l2-pkt-privsep: bind(PF_UNIX): %s",
-			   strerror(errno));
+		perror("l2-pkt-privsep: bind(PF_UNIX)");
 		goto fail;
 	}
 
@@ -194,14 +191,14 @@ struct l2_packet_data * l2_packet_init(
 	tv.tv_usec = 0;
 	res = select(l2->fd + 1, &rfds, NULL, NULL, &tv);
 	if (res < 0 && errno != EINTR) {
-		wpa_printf(MSG_ERROR, "select: %s", strerror(errno));
+		perror("select");
 		goto fail;
 	}
 
 	if (FD_ISSET(l2->fd, &rfds)) {
 		res = recv(l2->fd, reply, sizeof(reply), 0);
 		if (res < 0) {
-			wpa_printf(MSG_ERROR, "recv: %s", strerror(errno));
+			perror("recv");
 			goto fail;
 		}
 	} else {
@@ -228,18 +225,6 @@ fail:
 	l2->own_socket_path = NULL;
 	os_free(l2);
 	return NULL;
-}
-
-
-struct l2_packet_data * l2_packet_init_bridge(
-	const char *br_ifname, const char *ifname, const u8 *own_addr,
-	unsigned short protocol,
-	void (*rx_callback)(void *ctx, const u8 *src_addr,
-			    const u8 *buf, size_t len),
-	void *rx_callback_ctx, int l2_hdr)
-{
-	return l2_packet_init(br_ifname, own_addr, protocol, rx_callback,
-			      rx_callback_ctx, l2_hdr);
 }
 
 
@@ -273,11 +258,4 @@ int l2_packet_get_ip_addr(struct l2_packet_data *l2, char *buf, size_t len)
 void l2_packet_notify_auth_start(struct l2_packet_data *l2)
 {
 	wpa_priv_cmd(l2, PRIVSEP_CMD_L2_NOTIFY_AUTH_START, NULL, 0);
-}
-
-
-int l2_packet_set_packet_filter(struct l2_packet_data *l2,
-				enum l2_packet_filter_type type)
-{
-	return -1;
 }

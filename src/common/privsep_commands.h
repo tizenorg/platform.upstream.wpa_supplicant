@@ -31,9 +31,7 @@ struct privsep_cmd_associate
 	u8 bssid[ETH_ALEN];
 	u8 ssid[32];
 	size_t ssid_len;
-	int hwmode;
 	int freq;
-	int channel;
 	int pairwise_suite;
 	int group_suite;
 	int key_mgmt_suite;

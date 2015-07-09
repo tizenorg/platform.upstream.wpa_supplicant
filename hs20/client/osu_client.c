@@ -9,9 +9,6 @@
 #include "includes.h"
 #include <time.h>
 #include <sys/stat.h>
-#ifdef ANDROID
-#include "private/android_filesystem_config.h"
-#endif /* ANDROID */
 
 #include "common.h"
 #include "utils/browser.h"
@@ -400,9 +397,9 @@ static int cmd_dl_polupd_ca(struct hs20_osu_client *ctx, const char *pps_fname,
 	}
 
 	node = get_child_node(ctx->xml, pps,
-			      "Policy/PolicyUpdate/TrustRoot");
+			      "PolicyUpdate/TrustRoot");
 	if (node == NULL) {
-		wpa_printf(MSG_INFO, "No Policy/PolicyUpdate/TrustRoot/CertURL found from PPS");
+		wpa_printf(MSG_INFO, "No PolicyUpdate/TrustRoot/CertURL found from PPS");
 		xml_node_free(ctx->xml, pps);
 		return -1;
 	}
@@ -574,21 +571,6 @@ int hs20_add_pps_mo(struct hs20_osu_client *ctx, const char *uri,
 		}
 	}
 
-#ifdef ANDROID
-	/* Allow processes running with Group ID as AID_WIFI,
-	 * to read files from SP/<fqdn> directory */
-	if (chown(fname, -1, AID_WIFI)) {
-		wpa_printf(MSG_INFO, "CTRL: Could not chown directory: %s",
-			   strerror(errno));
-		/* Try to continue anyway */
-	}
-	if (chmod(fname, S_IRWXU | S_IRGRP | S_IXGRP) < 0) {
-		wpa_printf(MSG_INFO, "CTRL: Could not chmod directory: %s",
-			   strerror(errno));
-		/* Try to continue anyway */
-	}
-#endif /* ANDROID */
-
 	snprintf(fname, fname_len, "SP/%s/pps.xml", fqdn);
 
 	if (os_file_exists(fname)) {
@@ -687,10 +669,6 @@ int update_pps_file(struct hs20_osu_client *ctx, const char *pps_fname,
 	wpa_printf(MSG_INFO, "Updating PPS MO %s", pps_fname);
 
 	str = xml_node_to_str(ctx->xml, pps);
-	if (str == NULL) {
-		wpa_printf(MSG_ERROR, "No node found");
-		return -1;
-	}
 	wpa_printf(MSG_MSGDUMP, "[hs20] Updated PPS: '%s'", str);
 
 	snprintf(backup, sizeof(backup), "%s.bak", pps_fname);
@@ -2365,8 +2343,8 @@ static int cmd_signup(struct hs20_osu_client *ctx, int no_prod_assoc,
 }
 
 
-static int cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
-		       const char *pps_fname, const char *ca_fname)
+static void cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
+			const char *pps_fname, const char *ca_fname)
 {
 	xml_node_t *pps, *node;
 	char pps_fname_buf[300];
@@ -2393,12 +2371,12 @@ static int cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
 		} else if (get_wpa_status(ctx->ifname, "provisioning_sp", buf,
 					  sizeof(buf)) < 0) {
 			wpa_printf(MSG_INFO, "Could not get provisioning Home SP FQDN from wpa_supplicant");
-			return -1;
+			return;
 		}
 		os_free(ctx->fqdn);
 		ctx->fqdn = os_strdup(buf);
 		if (ctx->fqdn == NULL)
-			return -1;
+			return;
 		wpa_printf(MSG_INFO, "Home SP FQDN for current credential: %s",
 			   buf);
 		os_snprintf(pps_fname_buf, sizeof(pps_fname_buf),
@@ -2413,14 +2391,14 @@ static int cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
 	if (!os_file_exists(pps_fname)) {
 		wpa_printf(MSG_INFO, "PPS file '%s' does not exist or is not accessible",
 			   pps_fname);
-		return -1;
+		return;
 	}
 	wpa_printf(MSG_INFO, "Using PPS file: %s", pps_fname);
 
 	if (ca_fname && !os_file_exists(ca_fname)) {
 		wpa_printf(MSG_INFO, "CA file '%s' does not exist or is not accessible",
 			   ca_fname);
-		return -1;
+		return;
 	}
 	wpa_printf(MSG_INFO, "Using server trust root: %s", ca_fname);
 	ctx->ca_fname = ca_fname;
@@ -2428,7 +2406,7 @@ static int cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
 	pps = node_from_file(ctx->xml, pps_fname);
 	if (pps == NULL) {
 		wpa_printf(MSG_INFO, "Could not read PPS MO");
-		return -1;
+		return;
 	}
 
 	if (!ctx->fqdn) {
@@ -2436,18 +2414,18 @@ static int cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
 		node = get_child_node(ctx->xml, pps, "HomeSP/FQDN");
 		if (node == NULL) {
 			wpa_printf(MSG_INFO, "No HomeSP/FQDN found from PPS");
-			return -1;
+			return;
 		}
 		tmp = xml_node_get_text(ctx->xml, node);
 		if (tmp == NULL) {
 			wpa_printf(MSG_INFO, "No HomeSP/FQDN text found from PPS");
-			return -1;
+			return;
 		}
 		ctx->fqdn = os_strdup(tmp);
 		xml_node_get_text_free(ctx->xml, tmp);
 		if (!ctx->fqdn) {
 			wpa_printf(MSG_INFO, "No FQDN known");
-			return -1;
+			return;
 		}
 	}
 
@@ -2496,7 +2474,7 @@ static int cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
 	}
 	if (!address) {
 		wpa_printf(MSG_INFO, "Server URL not known");
-		return -1;
+		return;
 	}
 
 	write_summary(ctx, "Wait for IP address for subscriptiom remediation");
@@ -2519,7 +2497,6 @@ static int cmd_sub_rem(struct hs20_osu_client *ctx, const char *address,
 	xml_node_get_text_free(ctx->xml, cred_username);
 	str_clear_free(cred_password);
 	xml_node_free(ctx->xml, pps);
-	return 0;
 }
 
 
@@ -3089,11 +3066,10 @@ int main(int argc, char *argv[])
 		if (argc - optind < 2)
 			wpa_printf(MSG_ERROR, "Server URL missing from command line");
 		else
-			ret = cmd_sub_rem(&ctx, argv[optind + 1],
-					  argc > optind + 2 ?
-					  argv[optind + 2] : NULL,
-					  argc > optind + 3 ?
-					  argv[optind + 3] : NULL);
+			cmd_sub_rem(&ctx, argv[optind + 1],
+				    argc > optind + 2 ? argv[optind + 2] : NULL,
+				    argc > optind + 3 ? argv[optind + 3] :
+				    NULL);
 	} else if (strcmp(argv[optind], "pol_upd") == 0) {
 		if (argc - optind < 2) {
 			usage();

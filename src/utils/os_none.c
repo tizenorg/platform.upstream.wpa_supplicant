@@ -234,9 +234,3 @@ int os_snprintf(char *str, size_t size, const char *format, ...)
 	return 0;
 }
 #endif /* OS_NO_C_LIB_DEFINES */
-
-
-int os_exec(const char *program, const char *arg, int wait_completion)
-{
-	return -1;
-}

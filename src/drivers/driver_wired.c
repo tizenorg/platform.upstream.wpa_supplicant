@@ -100,7 +100,7 @@ static int wired_multicast_membership(int sock, int ifindex,
 	if (setsockopt(sock, SOL_PACKET,
 		       add ? PACKET_ADD_MEMBERSHIP : PACKET_DROP_MEMBERSHIP,
 		       &mreq, sizeof(mreq)) < 0) {
-		wpa_printf(MSG_ERROR, "setsockopt: %s", strerror(errno));
+		perror("setsockopt");
 		return -1;
 	}
 	return 0;
@@ -158,7 +158,7 @@ static void handle_read(int sock, void *eloop_ctx, void *sock_ctx)
 
 	len = recv(sock, buf, sizeof(buf), 0);
 	if (len < 0) {
-		wpa_printf(MSG_ERROR, "recv: %s", strerror(errno));
+		perror("recv");
 		return;
 	}
 
@@ -176,7 +176,7 @@ static void handle_dhcp(int sock, void *eloop_ctx, void *sock_ctx)
 
 	len = recv(sock, buf, sizeof(buf), 0);
 	if (len < 0) {
-		wpa_printf(MSG_ERROR, "recv: %s", strerror(errno));
+		perror("recv");
 		return;
 	}
 
@@ -209,21 +209,19 @@ static int wired_init_sockets(struct wpa_driver_wired_data *drv, u8 *own_addr)
 
 	drv->sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_PAE));
 	if (drv->sock < 0) {
-		wpa_printf(MSG_ERROR, "socket[PF_PACKET,SOCK_RAW]: %s",
-			   strerror(errno));
+		perror("socket[PF_PACKET,SOCK_RAW]");
 		return -1;
 	}
 
 	if (eloop_register_read_sock(drv->sock, handle_read, drv->ctx, NULL)) {
-		wpa_printf(MSG_INFO, "Could not register read socket");
+		printf("Could not register read socket\n");
 		return -1;
 	}
 
 	os_memset(&ifr, 0, sizeof(ifr));
 	os_strlcpy(ifr.ifr_name, drv->ifname, sizeof(ifr.ifr_name));
 	if (ioctl(drv->sock, SIOCGIFINDEX, &ifr) != 0) {
-		wpa_printf(MSG_ERROR, "ioctl(SIOCGIFINDEX): %s",
-			   strerror(errno));
+		perror("ioctl(SIOCGIFINDEX)");
 		return -1;
 	}
 
@@ -234,7 +232,7 @@ static int wired_init_sockets(struct wpa_driver_wired_data *drv, u8 *own_addr)
 		   addr.sll_ifindex);
 
 	if (bind(drv->sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		wpa_printf(MSG_ERROR, "bind: %s", strerror(errno));
+		perror("bind");
 		return -1;
 	}
 
@@ -249,28 +247,26 @@ static int wired_init_sockets(struct wpa_driver_wired_data *drv, u8 *own_addr)
 	os_memset(&ifr, 0, sizeof(ifr));
 	os_strlcpy(ifr.ifr_name, drv->ifname, sizeof(ifr.ifr_name));
 	if (ioctl(drv->sock, SIOCGIFHWADDR, &ifr) != 0) {
-		wpa_printf(MSG_ERROR, "ioctl(SIOCGIFHWADDR): %s",
-			   strerror(errno));
+		perror("ioctl(SIOCGIFHWADDR)");
 		return -1;
 	}
 
 	if (ifr.ifr_hwaddr.sa_family != ARPHRD_ETHER) {
-		wpa_printf(MSG_INFO, "Invalid HW-addr family 0x%04x",
-			   ifr.ifr_hwaddr.sa_family);
+		printf("Invalid HW-addr family 0x%04x\n",
+		       ifr.ifr_hwaddr.sa_family);
 		return -1;
 	}
 	os_memcpy(own_addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
 	/* setup dhcp listen socket for sta detection */
 	if ((drv->dhcp_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-		wpa_printf(MSG_ERROR, "socket call failed for dhcp: %s",
-			   strerror(errno));
+		perror("socket call failed for dhcp");
 		return -1;
 	}
 
 	if (eloop_register_read_sock(drv->dhcp_sock, handle_dhcp, drv->ctx,
 				     NULL)) {
-		wpa_printf(MSG_INFO, "Could not register read socket");
+		printf("Could not register read socket\n");
 		return -1;
 	}
 
@@ -281,14 +277,12 @@ static int wired_init_sockets(struct wpa_driver_wired_data *drv, u8 *own_addr)
 
 	if (setsockopt(drv->dhcp_sock, SOL_SOCKET, SO_REUSEADDR, (char *) &n,
 		       sizeof(n)) == -1) {
-		wpa_printf(MSG_ERROR, "setsockopt[SOL_SOCKET,SO_REUSEADDR]: %s",
-			   strerror(errno));
+		perror("setsockopt[SOL_SOCKET,SO_REUSEADDR]");
 		return -1;
 	}
 	if (setsockopt(drv->dhcp_sock, SOL_SOCKET, SO_BROADCAST, (char *) &n,
 		       sizeof(n)) == -1) {
-		wpa_printf(MSG_ERROR, "setsockopt[SOL_SOCKET,SO_BROADCAST]: %s",
-			   strerror(errno));
+		perror("setsockopt[SOL_SOCKET,SO_BROADCAST]");
 		return -1;
 	}
 
@@ -296,15 +290,13 @@ static int wired_init_sockets(struct wpa_driver_wired_data *drv, u8 *own_addr)
 	os_strlcpy(ifr.ifr_ifrn.ifrn_name, drv->ifname, IFNAMSIZ);
 	if (setsockopt(drv->dhcp_sock, SOL_SOCKET, SO_BINDTODEVICE,
 		       (char *) &ifr, sizeof(ifr)) < 0) {
-		wpa_printf(MSG_ERROR,
-			   "setsockopt[SOL_SOCKET,SO_BINDTODEVICE]: %s",
-			   strerror(errno));
+		perror("setsockopt[SOL_SOCKET,SO_BINDTODEVICE]");
 		return -1;
 	}
 
 	if (bind(drv->dhcp_sock, (struct sockaddr *) &addr2,
 		 sizeof(struct sockaddr)) == -1) {
-		wpa_printf(MSG_ERROR, "bind: %s", strerror(errno));
+		perror("bind");
 		return -1;
 	}
 
@@ -328,9 +320,8 @@ static int wired_send_eapol(void *priv, const u8 *addr,
 	len = sizeof(*hdr) + data_len;
 	hdr = os_zalloc(len);
 	if (hdr == NULL) {
-		wpa_printf(MSG_INFO,
-			   "malloc() failed for wired_send_eapol(len=%lu)",
-			   (unsigned long) len);
+		printf("malloc() failed for wired_send_eapol(len=%lu)\n",
+		       (unsigned long) len);
 		return -1;
 	}
 
@@ -346,9 +337,9 @@ static int wired_send_eapol(void *priv, const u8 *addr,
 	os_free(hdr);
 
 	if (res < 0) {
-		wpa_printf(MSG_ERROR,
-			   "wired_send_eapol - packet len: %lu - failed: send: %s",
-			   (unsigned long) len, strerror(errno));
+		perror("wired_send_eapol: send");
+		printf("wired_send_eapol - packet len: %lu - failed\n",
+		       (unsigned long) len);
 	}
 
 	return res;
@@ -362,8 +353,7 @@ static void * wired_driver_hapd_init(struct hostapd_data *hapd,
 
 	drv = os_zalloc(sizeof(struct wpa_driver_wired_data));
 	if (drv == NULL) {
-		wpa_printf(MSG_INFO,
-			   "Could not allocate memory for wired driver data");
+		printf("Could not allocate memory for wired driver data\n");
 		return NULL;
 	}
 
@@ -384,15 +374,11 @@ static void wired_driver_hapd_deinit(void *priv)
 {
 	struct wpa_driver_wired_data *drv = priv;
 
-	if (drv->sock >= 0) {
-		eloop_unregister_read_sock(drv->sock);
+	if (drv->sock >= 0)
 		close(drv->sock);
-	}
 
-	if (drv->dhcp_sock >= 0) {
-		eloop_unregister_read_sock(drv->dhcp_sock);
+	if (drv->dhcp_sock >= 0)
 		close(drv->dhcp_sock);
-	}
 
 	os_free(drv);
 }
@@ -428,15 +414,14 @@ static int wpa_driver_wired_get_ifflags(const char *ifname, int *flags)
 
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 	if (s < 0) {
-		wpa_printf(MSG_ERROR, "socket: %s", strerror(errno));
+		perror("socket");
 		return -1;
 	}
 
 	os_memset(&ifr, 0, sizeof(ifr));
 	os_strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
 	if (ioctl(s, SIOCGIFFLAGS, (caddr_t) &ifr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCGIFFLAGS]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOCGIFFLAGS]");
 		close(s);
 		return -1;
 	}
@@ -453,7 +438,7 @@ static int wpa_driver_wired_set_ifflags(const char *ifname, int flags)
 
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 	if (s < 0) {
-		wpa_printf(MSG_ERROR, "socket: %s", strerror(errno));
+		perror("socket");
 		return -1;
 	}
 
@@ -461,8 +446,7 @@ static int wpa_driver_wired_set_ifflags(const char *ifname, int flags)
 	os_strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
 	ifr.ifr_flags = flags & 0xffff;
 	if (ioctl(s, SIOCSIFFLAGS, (caddr_t) &ifr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCSIFFLAGS]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOCSIFFLAGS]");
 		close(s);
 		return -1;
 	}
@@ -479,15 +463,14 @@ static int wpa_driver_wired_get_ifstatus(const char *ifname, int *status)
 
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 	if (s < 0) {
-		wpa_printf(MSG_ERROR, "socket: %s", strerror(errno));
+		perror("socket");
 		return -1;
 	}
 
 	os_memset(&ifmr, 0, sizeof(ifmr));
 	os_strlcpy(ifmr.ifm_name, ifname, IFNAMSIZ);
 	if (ioctl(s, SIOCGIFMEDIA, (caddr_t) &ifmr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOCGIFMEDIA]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOCGIFMEDIA]");
 		close(s);
 		return -1;
 	}
@@ -511,7 +494,7 @@ static int wpa_driver_wired_multi(const char *ifname, const u8 *addr, int add)
 
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 	if (s < 0) {
-		wpa_printf(MSG_ERROR, "socket: %s", strerror(errno));
+		perror("socket");
 		return -1;
 	}
 
@@ -545,8 +528,7 @@ static int wpa_driver_wired_multi(const char *ifname, const u8 *addr, int add)
 #endif /* defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__) */
 
 	if (ioctl(s, add ? SIOCADDMULTI : SIOCDELMULTI, (caddr_t) &ifr) < 0) {
-		wpa_printf(MSG_ERROR, "ioctl[SIOC{ADD/DEL}MULTI]: %s",
-			   strerror(errno));
+		perror("ioctl[SIOC{ADD/DEL}MULTI]");
 		close(s);
 		return -1;
 	}
@@ -569,7 +551,7 @@ static void * wpa_driver_wired_init(void *ctx, const char *ifname)
 #ifdef __linux__
 	drv->pf_sock = socket(PF_PACKET, SOCK_DGRAM, 0);
 	if (drv->pf_sock < 0)
-		wpa_printf(MSG_ERROR, "socket(PF_PACKET): %s", strerror(errno));
+		perror("socket(PF_PACKET)");
 #else /* __linux__ */
 	drv->pf_sock = -1;
 #endif /* __linux__ */

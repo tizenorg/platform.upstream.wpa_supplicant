@@ -233,30 +233,14 @@ int wifi_display_subelem_set(struct wpa_global *global, char *cmd)
 	if (pos == NULL)
 		return -1;
 	*pos++ = '\0';
+	subelem = atoi(cmd);
+	if (subelem < 0 || subelem >= MAX_WFD_SUBELEMS)
+		return -1;
 
 	len = os_strlen(pos);
 	if (len & 1)
 		return -1;
 	len /= 2;
-
-	if (os_strcmp(cmd, "all") == 0) {
-		int res;
-
-		e = wpabuf_alloc(len);
-		if (e == NULL)
-			return -1;
-		if (hexstr2bin(pos, wpabuf_put(e, len), len) < 0) {
-			wpabuf_free(e);
-			return -1;
-		}
-		res = wifi_display_subelem_set_from_ies(global, e);
-		wpabuf_free(e);
-		return res;
-	}
-
-	subelem = atoi(cmd);
-	if (subelem < 0 || subelem >= MAX_WFD_SUBELEMS)
-		return -1;
 
 	if (len == 0) {
 		/* Clear subelement */
@@ -287,7 +271,7 @@ int wifi_display_subelem_set_from_ies(struct wpa_global *global,
 {
 	int subelements[MAX_WFD_SUBELEMS] = {};
 	const u8 *pos, *end;
-	unsigned int len, subelem;
+	int len, subelem;
 	struct wpabuf *e;
 
 	wpa_printf(MSG_DEBUG, "WFD IEs set: %p - %lu",
@@ -308,7 +292,7 @@ int wifi_display_subelem_set_from_ies(struct wpa_global *global,
 		wpa_printf(MSG_DEBUG, "WFD Sub-Element ID %d - len %d",
 			   *pos, len - 3);
 
-		if (len > (unsigned int) (end - pos))
+		if (pos + len > end)
 			break;
 
 		subelem = *pos;
@@ -340,19 +324,6 @@ int wifi_display_subelem_get(struct wpa_global *global, char *cmd,
 			     char *buf, size_t buflen)
 {
 	int subelem;
-
-	if (os_strcmp(cmd, "all") == 0) {
-		struct wpabuf *ie;
-		int res;
-
-		ie = wifi_display_get_wfd_ie(global);
-		if (ie == NULL)
-			return 0;
-		res = wpa_snprintf_hex(buf, buflen, wpabuf_head(ie),
-				       wpabuf_len(ie));
-		wpabuf_free(ie);
-		return res;
-	}
 
 	subelem = atoi(cmd);
 	if (subelem < 0 || subelem >= MAX_WFD_SUBELEMS)

@@ -617,7 +617,6 @@ vlan_read_ifnames(struct nlmsghdr *h, size_t len, int del,
 	struct ifinfomsg *ifi;
 	int attrlen, nlmsg_len, rta_len;
 	struct rtattr *attr;
-	char ifname[IFNAMSIZ + 1];
 
 	if (len < sizeof(*ifi))
 		return;
@@ -632,39 +631,29 @@ vlan_read_ifnames(struct nlmsghdr *h, size_t len, int del,
 
 	attr = (struct rtattr *) (((char *) ifi) + nlmsg_len);
 
-	os_memset(ifname, 0, sizeof(ifname));
 	rta_len = RTA_ALIGN(sizeof(struct rtattr));
 	while (RTA_OK(attr, attrlen)) {
+		char ifname[IFNAMSIZ + 1];
+
 		if (attr->rta_type == IFLA_IFNAME) {
 			int n = attr->rta_len - rta_len;
 			if (n < 0)
 				break;
 
-			if ((size_t) n >= sizeof(ifname))
-				n = sizeof(ifname) - 1;
+			os_memset(ifname, 0, sizeof(ifname));
+
+			if ((size_t) n > sizeof(ifname))
+				n = sizeof(ifname);
 			os_memcpy(ifname, ((char *) attr) + rta_len, n);
 
+			if (del)
+				vlan_dellink(ifname, hapd);
+			else
+				vlan_newlink(ifname, hapd);
 		}
 
 		attr = RTA_NEXT(attr, attrlen);
 	}
-
-	if (!ifname[0])
-		return;
-
-	wpa_printf(MSG_DEBUG,
-		   "VLAN: RTM_%sLINK: ifi_index=%d ifname=%s ifi_family=%d ifi_flags=0x%x (%s%s%s%s)",
-		   del ? "DEL" : "NEW",
-		   ifi->ifi_index, ifname, ifi->ifi_family, ifi->ifi_flags,
-		   (ifi->ifi_flags & IFF_UP) ? "[UP]" : "",
-		   (ifi->ifi_flags & IFF_RUNNING) ? "[RUNNING]" : "",
-		   (ifi->ifi_flags & IFF_LOWER_UP) ? "[LOWER_UP]" : "",
-		   (ifi->ifi_flags & IFF_DORMANT) ? "[DORMANT]" : "");
-
-	if (del)
-		vlan_dellink(ifname, hapd);
-	else
-		vlan_newlink(ifname, hapd);
 }
 
 
@@ -688,7 +677,7 @@ static void vlan_event_receive(int sock, void *eloop_ctx, void *sock_ctx)
 	}
 
 	h = (struct nlmsghdr *) buf;
-	while (NLMSG_OK(h, left)) {
+	while (left >= (int) sizeof(*h)) {
 		int len, plen;
 
 		len = h->nlmsg_len;
@@ -709,7 +698,9 @@ static void vlan_event_receive(int sock, void *eloop_ctx, void *sock_ctx)
 			break;
 		}
 
-		h = NLMSG_NEXT(h, left);
+		len = NLMSG_ALIGN(len);
+		left -= len;
+		h = (struct nlmsghdr *) ((char *) h + len);
 	}
 
 	if (left > 0) {
@@ -900,7 +891,7 @@ struct hostapd_vlan * vlan_add_dynamic(struct hostapd_data *hapd,
 				       struct hostapd_vlan *vlan,
 				       int vlan_id)
 {
-	struct hostapd_vlan *n = NULL;
+	struct hostapd_vlan *n;
 	char *ifname, *pos;
 
 	if (vlan == NULL || vlan_id <= 0 || vlan_id > MAX_VLAN_ID ||
@@ -913,24 +904,28 @@ struct hostapd_vlan * vlan_add_dynamic(struct hostapd_data *hapd,
 	if (ifname == NULL)
 		return NULL;
 	pos = os_strchr(ifname, '#');
-	if (pos == NULL)
-		goto free_ifname;
+	if (pos == NULL) {
+		os_free(ifname);
+		return NULL;
+	}
 	*pos++ = '\0';
 
 	n = os_zalloc(sizeof(*n));
-	if (n == NULL)
-		goto free_ifname;
+	if (n == NULL) {
+		os_free(ifname);
+		return NULL;
+	}
 
 	n->vlan_id = vlan_id;
 	n->dynamic_vlan = 1;
 
 	os_snprintf(n->ifname, sizeof(n->ifname), "%s%d%s", ifname, vlan_id,
 		    pos);
+	os_free(ifname);
 
 	if (hostapd_vlan_if_add(hapd, n->ifname)) {
 		os_free(n);
-		n = NULL;
-		goto free_ifname;
+		return NULL;
 	}
 
 	n->next = hapd->conf->vlan;
@@ -940,8 +935,6 @@ struct hostapd_vlan * vlan_add_dynamic(struct hostapd_data *hapd,
 	ifconfig_up(n->ifname);
 #endif /* CONFIG_FULL_DYNAMIC_VLAN */
 
-free_ifname:
-	os_free(ifname);
 	return n;
 }
 
