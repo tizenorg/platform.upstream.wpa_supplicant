@@ -5472,6 +5472,7 @@ static int p2p_ctrl_group_add_persistent(struct wpa_supplicant *wpa_s,
 static int p2p_ctrl_group_add(struct wpa_supplicant *wpa_s, char *cmd)
 {
 	int freq = 0, ht40, vht;
+	char *passphrase = NULL;
 	char *pos;
 
 	pos = os_strstr(cmd, "freq=");
@@ -5482,17 +5483,30 @@ static int p2p_ctrl_group_add(struct wpa_supplicant *wpa_s, char *cmd)
 	ht40 = (os_strstr(cmd, "ht40") != NULL) || wpa_s->conf->p2p_go_ht40 ||
 		vht;
 
+	pos = os_strstr(cmd, "passphrase");
+	if(pos) {
+
+		wpa_printf(MSG_DEBUG, "pos : %s", pos);
+		passphrase = pos + 11;
+		wpa_printf(MSG_DEBUG, "passphrase : %s",passphrase);
+		pos = os_strchr(passphrase, ' ');
+		if(pos != NULL)
+			*pos = '\0';
+		wpa_printf(MSG_DEBUG, "passphrase : %s",passphrase);
+	}
+
 	if (os_strncmp(cmd, "persistent=", 11) == 0)
 		return p2p_ctrl_group_add_persistent(wpa_s, cmd + 11, freq,
 						     ht40, vht);
 	if (os_strcmp(cmd, "persistent") == 0 ||
 	    os_strncmp(cmd, "persistent ", 11) == 0)
-		return wpas_p2p_group_add(wpa_s, 1, freq, ht40, vht);
+		return wpas_p2p_group_add(wpa_s, 1, freq, ht40, vht, passphrase);
 	if (os_strncmp(cmd, "freq=", 5) == 0)
-		return wpas_p2p_group_add(wpa_s, 0, freq, ht40, vht);
+		return wpas_p2p_group_add(wpa_s, 0, freq, ht40, vht, passphrase);
 	if (ht40)
-		return wpas_p2p_group_add(wpa_s, 0, freq, ht40, vht);
-
+		return wpas_p2p_group_add(wpa_s, 0, freq, ht40, vht, passphrase);
+	if(passphrase)
+		return wpas_p2p_group_add(wpa_s, 0, freq, ht40,  vht, passphrase);
 	wpa_printf(MSG_DEBUG, "CTRL: Invalid P2P_GROUP_ADD parameters '%s'",
 		   cmd);
 	return -1;
@@ -8066,7 +8080,7 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		if (wpas_p2p_group_remove(wpa_s, buf + 17))
 			reply_len = -1;
 	} else if (os_strcmp(buf, "P2P_GROUP_ADD") == 0) {
-		if (wpas_p2p_group_add(wpa_s, 0, 0, 0, 0))
+		if (wpas_p2p_group_add(wpa_s, 0, 0, 0, 0, NULL))
 			reply_len = -1;
 	} else if (os_strncmp(buf, "P2P_GROUP_ADD ", 14) == 0) {
 		if (p2p_ctrl_group_add(wpa_s, buf + 14))

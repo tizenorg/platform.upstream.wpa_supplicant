@@ -676,9 +676,16 @@ out:
 		p2p_parse_free(&msg);
 		return;
 	}
+#ifdef BCM_DRIVER_V115
+	u8 null_mac[ETH_ALEN] = {0, };
+#endif
 	p2p->pending_action_state = P2P_PENDING_PD_RESPONSE;
-	if (p2p_send_action(p2p, freq, sa, p2p->cfg->dev_addr,
-			    p2p->cfg->dev_addr,
+	if (p2p_send_action(p2p, freq, sa,
+#ifdef BCM_DRIVER_V115
+			    p2p->cfg->own_addr, null_mac,
+#else
+			    p2p->cfg->dev_addr, p2p->cfg->dev_addr,
+#endif
 			    wpabuf_head(resp), wpabuf_len(resp), 200) < 0) {
 		p2p_dbg(p2p, "Failed to send Action frame");
 	} else
@@ -1073,7 +1080,11 @@ int p2p_send_prov_disc_req(struct p2p_data *p2p, struct p2p_device *dev,
 		p2p_stop_listen_for_freq(p2p, freq);
 	p2p->pending_action_state = P2P_PENDING_PD;
 	if (p2p_send_action(p2p, freq, dev->info.p2p_device_addr,
+#ifdef BCM_DRIVER_V115
+			    p2p->cfg->own_addr, dev->info.p2p_device_addr,
+#else
 			    p2p->cfg->dev_addr, dev->info.p2p_device_addr,
+#endif
 			    wpabuf_head(req), wpabuf_len(req), 200) < 0) {
 		p2p_dbg(p2p, "Failed to send Action frame");
 		wpabuf_free(req);

@@ -2398,8 +2398,17 @@ p2p_reply_probe(struct p2p_data *p2p, const u8 *addr, const u8 *dst,
 	resp->frame_control = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
 					   (WLAN_FC_STYPE_PROBE_RESP << 4));
 	os_memcpy(resp->da, addr, ETH_ALEN);
+#ifdef BCM_DRIVER_V115
+	os_memcpy(resp->sa, p2p->cfg->own_addr, ETH_ALEN);
+	os_memcpy(resp->bssid, p2p->cfg->own_addr, ETH_ALEN);
+#else
+	/*
+	 * A P2P Device in the Listen State shall set the Source Address and
+	 * BSSID to its P2P Device Address (Spec page 26)
+	 */
 	os_memcpy(resp->sa, p2p->cfg->dev_addr, ETH_ALEN);
 	os_memcpy(resp->bssid, p2p->cfg->dev_addr, ETH_ALEN);
+#endif
 	resp->u.probe_resp.beacon_int = host_to_le16(100);
 	/* hardware or low-level driver will setup seq_ctrl and timestamp */
 	resp->u.probe_resp.capab_info =
@@ -4686,6 +4695,18 @@ int p2p_set_no_go_freq(struct p2p_data *p2p,
 	p2p->no_go_freq.num = list->num;
 	p2p_dbg(p2p, "Updated no GO chan list");
 
+	return 0;
+}
+
+
+int p2p_get_member_in_go_dev(struct p2p_data *p2p, const u8 *dev_addr,
+			   u8 *member_in_go_dev)
+{
+
+	struct p2p_device *dev = p2p_get_device(p2p, dev_addr);
+	if (dev == NULL || is_zero_ether_addr(dev->member_in_go_dev))
+		return -1;
+	os_memcpy(member_in_go_dev, dev->member_in_go_dev, ETH_ALEN);
 	return 0;
 }
 
