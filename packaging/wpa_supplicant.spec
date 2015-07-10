@@ -1,20 +1,20 @@
 Name:           wpa_supplicant
-Version:        2.3
+Version:        2.4
 Release:        0
 License:        BSD-3-Clause and GPL-2.0+
 Summary:        WPA supplicant implementation
 Url:            http://hostap.epitest.fi/wpa_supplicant/
 Group:          Network & Connectivity/Wireless
-Source:         http://hostap.epitest.fi/releases/wpa_supplicant-%{version}.tar.gz
-Source1:        config
-Source2:        wpa_supplicant-p2p.conf
-Source1001: 	wpa_supplicant.manifest
-BuildRequires:  dbus-devel
-BuildRequires:  libnl-devel
-BuildRequires:  openssl-devel
-BuildRequires:  pkg-config
-BuildRequires:  readline-devel
-BuildRequires:  systemd
+Source0:    %{name}-%{version}.tar.gz
+Source1001:     wpa_supplicant.manifest
+
+BuildRequires: pkgconfig(openssl)
+BuildRequires: pkgconfig(libssl)
+BuildRequires: pkgconfig(libcrypto)
+BuildRequires: pkgconfig(dbus-1)
+BuildRequires: pkgconfig(libnl-2.0)
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
 
 %description
 wpa_supplicant is an implementation of the WPA Supplicant component,
@@ -23,56 +23,71 @@ negotiation with a WPA Authenticator and it controls the roaming and
 IEEE 802.11 authentication/association of the wlan driver.
 
 %prep
-%setup -q -n wpa_supplicant-%{version}
-cp %{SOURCE1001} .
-rm -rf wpa_supplicant-%{version}/patches
-cp %{SOURCE1} wpa_supplicant/.config
+%setup -q
 
 %build
-cd wpa_supplicant
-CFLAGS="%{optflags}"
-%ifarch %arm
-CFLAGS+=" -DTIZEN_ARM"
-%endif
-make V=1 BINDIR=%{_sbindir} %{?_smp_mflags}
+
+cp %{SOURCE1001} .
+cp -v configurations/tizen.config wpa_supplicant/.config
+cp -v configurations/tizen_hostapd.config hostapd/.config
+make %{?_smp_mflags} -C wpa_supplicant all
+make -C hostapd clean
+make %{?_smp_mflags} -C hostapd all
 
 %install
-install -d %{buildroot}/%{_sbindir}
-install -m 0755 wpa_supplicant/wpa_cli %{buildroot}%{_sbindir}
-install -m 0755 wpa_supplicant/wpa_passphrase %{buildroot}%{_sbindir}
-install -m 0755 wpa_supplicant/wpa_supplicant %{buildroot}%{_sbindir}
-install -d %{buildroot}%{_sysconfdir}/dbus-1/system.d
-install -m 0644 wpa_supplicant/dbus/dbus-wpa_supplicant.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/wpa_supplicant.conf
-install -d %{buildroot}/%{_sysconfdir}/%{name}
-install -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/%{name}/%{name}-p2p.conf
-install -d %{buildroot}/%{_datadir}/dbus-1/system-services
-install -m 0644 wpa_supplicant/dbus/fi.epitest.hostap.WPASupplicant.service %{buildroot}/%{_datadir}/dbus-1/system-services
-install -m 0644 wpa_supplicant/dbus/fi.w1.wpa_supplicant1.service %{buildroot}/%{_datadir}/dbus-1/system-services
-install -d %{buildroot}/%{_localstatedir}/run/%{name}
-install -d %{buildroot}%{_mandir}/man{5,8}
-install -m 0644 wpa_supplicant/doc/docbook/*.8 %{buildroot}%{_mandir}/man8
-install -m 0644 wpa_supplicant/doc/docbook/*.5 %{buildroot}%{_mandir}/man5
+mkdir -p %{buildroot}%{_sbindir}/systemd/
+#mkdir -p %{buildroot}%{_sbindir}/dbus/
+
+cp -v wpa_supplicant/wpa_supplicant %{buildroot}%{_sbindir}/
+cp -v wpa_supplicant/wpa_cli %{buildroot}%{_sbindir}/
+cp -v hostapd/hostapd %{buildroot}%{_sbindir}/
+cp -v hostapd/hostapd_cli %{buildroot}%{_sbindir}/
+cp -v files/wpa_supp.sh %{buildroot}%{_sbindir}/
+
+# Configurations
+mkdir -p %{buildroot}%{_sysconfdir}/wpa_supplicant/
+cp -v wpa_supplicant/wpa_supplicant.conf %{buildroot}%{_sysconfdir}/wpa_supplicant/wpa_supplicant.conf
+cp -v hostapd/hostapd.conf %{buildroot}%{_sysconfdir}/wpa_supplicant/hostapd.conf
+
+# D-Bus
+#mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d/
+#cp wpa_supplicant/dbus/dbus-wpa_supplicant.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/wpa_supplicant.conf
+#mkdir -p %{buildroot}%{_datadir}/dbus-1/services/
+#mkdir -p %{buildroot}%{_datadir}/dbus-1/system-services/
+#cp wpa_supplicant/dbus/fi.epitest.hostap.WPASupplicant.service %{buildroot}%{_datadir}/dbus-1/services/
+#cp wpa_supplicant/dbus/fi.w1.wpa_supplicant1.service %{buildroot}%{_datadir}/dbus-1/system-services/
+
+
+# sanitise the example configuration
+mkdir -p %{buildroot}%{_defaultdocdir}/wpasupplicant
+sed 's/^\([^#]\+=.*\|}\)/#\1/' < ./wpa_supplicant/wpa_supplicant.conf | gzip > %{buildroot}%{_defaultdocdir}/wpasupplicant/README.wpa_supplicant.conf.gz
 
 # install systemd service file
-mkdir -p %{buildroot}%{_unitdir}
-install -m 0644 wpa_supplicant/systemd/wpa_supplicant.service %{buildroot}%{_unitdir}
-mkdir -p %{buildroot}%{_unitdir}/network.target.wants
-ln -s ../wpa_supplicant.service %{buildroot}%{_unitdir}/network.target.wants/wpa_supplicant.service
+#mkdir -p %{buildroot}%{_libdir}/systemd/system
+#install -m 0644 %{SOURCE1} %{buildroot}%{_libdir}/systemd/system/
+#mkdir -p %{buildroot}%{_libdir}/systemd/system/network.target.wants
+#ln -s ../wpa_supplicant.service %{buildroot}%{_libdir}/systemd/system/network.target.wants/wpa_supplicant.service
 
-%docs_package
+rm -rf %{buildroot}%{_sbindir}/systemd/
+#rm -rf %{buildroot}%{_sbindir}/dbus/
+rm -rf %{buildroot}%{_sbindir}/wpa_passphrase
+
+%post -p /sbin/ldconfig
+
+%postun -p /sbin/ldconfig
 
 
 %files
-%manifest %{name}.manifest
-%defattr(-,root,root)
-%license COPYING
+%manifest wpa_supplicant.manifest
 %{_sbindir}/wpa_cli
-%{_sbindir}/wpa_passphrase
 %{_sbindir}/wpa_supplicant
-%config %{_sysconfdir}/dbus-1/system.d/%{name}.conf
-%config %{_sysconfdir}/%{name}/%{name}-p2p.conf
-%{_datadir}/dbus-1/system-services
-%dir %{_localstatedir}/run/%{name}
-%ghost /var/run/%{name}
-%{_unitdir}/wpa_supplicant.service
-%{_unitdir}/network.target.wants/wpa_supplicant.service
+%{_sbindir}/hostapd
+%{_sbindir}/hostapd_cli
+%attr(500,root,root) %{_sbindir}/wpa_supp.sh
+#%attr(644,-,-) %{_sysconfdir}/dbus-1/system.d/*.conf
+#%attr(644,-,-) %{_datadir}/dbus-1/services/*.service
+#%attr(644,-,-) %{_datadir}/dbus-1/system-services/*.service
+%attr(644,-,-) %{_sysconfdir}/wpa_supplicant/*.conf
+%{_defaultdocdir}/wpasupplicant/README.wpa_supplicant.*
+#%{_libdir}/systemd/system/wpa_supplicant.service
+#%{_libdir}/systemd/system/network.target.wants/wpa_supplicant.service
