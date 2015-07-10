@@ -3093,6 +3093,19 @@ struct wpa_driver_ops {
 	 */
 	int (*stop_ap)(void *priv);
 
+#ifdef BCM_DRIVER_V115
+	/**
+	 * priv_cmd - execute driver-specific command
+	 * @priv: private driver interface data
+	 * @cmd: command to execute
+	 * @buf: return buffer
+	 * @buf_len: buffer length
+	 *
+	 * Returns: 0 on success, -1 on failure
+	 */
+	int (*priv_cmd)(void *priv, char *cmd, char *buf, size_t buf_len);
+#endif /* BCM_DRIVER_V115 */
+
 	/**
 	 * get_survey - Retrieve survey data
 	 * @priv: Private driver interface data

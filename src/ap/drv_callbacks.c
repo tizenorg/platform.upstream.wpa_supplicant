@@ -371,16 +371,6 @@ skip_wpa_check:
 	}
 #endif /* CONFIG_P2P */
 
-#ifdef TIZEN_ARM
-	if ((sta->flags & WLAN_STA_AUTHORIZED) == 0) {
-		wpa_printf(MSG_DEBUG, "(sta->flags & WLAN_STA_AUTHORIZED) == 0");
-		wpa_printf(MSG_INFO, "AP_STA_CONNECTED" MACSTR, MAC2STR(sta->addr));
-		if (hapd->sta_authorized_cb)
-			hapd->sta_authorized_cb(hapd->sta_authorized_cb_ctx,
-					sta->addr, 1, NULL);
-     }
-#endif
-
 	return 0;
 
 fail:

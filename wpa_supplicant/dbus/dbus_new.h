@@ -145,6 +145,7 @@ void wpas_dbus_signal_network_request(struct wpa_supplicant *wpa_s,
 				      enum wpa_ctrl_req_type rtype,
 				      const char *default_text);
 void wpas_dbus_signal_scan_done(struct wpa_supplicant *wpa_s, int success);
+void wpas_dbus_signal_find_stopped(struct wpa_supplicant *wpa_s);
 void wpas_dbus_signal_wps_cred(struct wpa_supplicant *wpa_s,
 			       const struct wps_credential *cred);
 void wpas_dbus_signal_wps_event_m2d(struct wpa_supplicant *wpa_s,
@@ -228,6 +229,10 @@ void wpas_dbus_signal_sta_authorized(struct wpa_supplicant *wpa_s,
 				     const u8 *sta);
 void wpas_dbus_signal_sta_deauthorized(struct wpa_supplicant *wpa_s,
 				       const u8 *sta);
+void wpas_dbus_signal_p2p_group_formation_failure (struct wpa_supplicant *wpa_s);
+void wpas_dbus_signal_p2p_invitation_received(struct wpa_supplicant *wpa_s,
+					    const u8 *sa,const u8 *dev_add,const u8 *bssid,
+					    int id, int op_freq);
 
 #else /* CONFIG_CTRL_IFACE_DBUS_NEW */
 
