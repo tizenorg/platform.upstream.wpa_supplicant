@@ -251,7 +251,11 @@ int p2p_connect_send(struct p2p_data *p2p, struct p2p_device *dev)
 	dev->flags |= P2P_DEV_WAIT_GO_NEG_RESPONSE;
 	dev->connect_reqs++;
 	if (p2p_send_action(p2p, freq, dev->info.p2p_device_addr,
+#ifdef BCM_DRIVER_V115
+			    p2p->cfg->own_addr, dev->info.p2p_device_addr,
+#else
 			    p2p->cfg->dev_addr, dev->info.p2p_device_addr,
+#endif
 			    wpabuf_head(req), wpabuf_len(req), 500) < 0) {
 		p2p_dbg(p2p, "Failed to send Action frame");
 		/* Use P2P find to recover and retry */
@@ -334,8 +338,13 @@ static struct wpabuf * p2p_build_go_neg_resp(struct p2p_data *p2p,
 	}
 	p2p_buf_add_device_info(buf, p2p, peer);
 	if (peer && peer->go_state == LOCAL_GO) {
+#ifdef BCM_DRIVER_V115
+		p2p_buf_add_group_id(buf, p2p->cfg->own_addr, p2p->ssid,
+				     p2p->ssid_len);
+#else
 		p2p_buf_add_group_id(buf, p2p->cfg->dev_addr, p2p->ssid,
 				     p2p->ssid_len);
+#endif
 	}
 	p2p_buf_update_ie_hdr(buf, len);
 
@@ -850,8 +859,12 @@ fail:
 	} else
 		p2p->pending_action_state =
 			P2P_PENDING_GO_NEG_RESPONSE_FAILURE;
-	if (p2p_send_action(p2p, freq, sa, p2p->cfg->dev_addr,
-			    p2p->cfg->dev_addr,
+	if (p2p_send_action(p2p, freq, sa,
+#ifdef BCM_DRIVER_V115
+			    p2p->cfg->own_addr, p2p->cfg->own_addr,
+#else
+			    p2p->cfg->dev_addr, p2p->cfg->dev_addr,
+#endif
 			    wpabuf_head(resp), wpabuf_len(resp), 500) < 0) {
 		p2p_dbg(p2p, "Failed to send Action frame");
 	}
@@ -915,8 +928,13 @@ static struct wpabuf * p2p_build_go_neg_conf(struct p2p_data *p2p,
 	p2p_channels_intersect(&p2p->channels, &peer->channels, &res);
 	p2p_buf_add_channel_list(buf, p2p->cfg->country, &res);
 	if (go) {
+#ifdef BCM_DRIVER_V115
+		p2p_buf_add_group_id(buf, p2p->cfg->own_addr, p2p->ssid,
+				     p2p->ssid_len);
+#else
 		p2p_buf_add_group_id(buf, p2p->cfg->dev_addr, p2p->ssid,
 				     p2p->ssid_len);
+#endif
 	}
 	p2p_buf_update_ie_hdr(buf, len);
 
@@ -1177,7 +1195,12 @@ fail:
 	dev->go_neg_conf_freq = freq;
 	dev->go_neg_conf_sent = 0;
 
-	if (p2p_send_action(p2p, freq, sa, p2p->cfg->dev_addr, sa,
+	if (p2p_send_action(p2p, freq, sa, 
+#ifdef BCM_DRIVER_V115
+			    p2p->cfg->own_addr, sa,
+#else
+			    p2p->cfg->dev_addr, sa,
+#endif
 			    wpabuf_head(dev->go_neg_conf),
 			    wpabuf_len(dev->go_neg_conf), 200) < 0) {
 		p2p_dbg(p2p, "Failed to send Action frame");

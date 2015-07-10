@@ -66,6 +66,9 @@ struct i802_bss {
 	unsigned int static_ap:1;
 
 	u8 addr[ETH_ALEN];
+#ifdef BCM_DRIVER_V115
+	u8 dev_addr[ETH_ALEN];
+#endif /* BCM_DRIVER_V115 */
 
 	int freq;
 	int bandwidth;

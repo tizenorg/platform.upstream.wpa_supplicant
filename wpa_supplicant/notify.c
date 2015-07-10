@@ -219,6 +219,14 @@ void wpas_notify_scan_results(struct wpa_supplicant *wpa_s)
 }
 
 
+void wpas_notify_find_stopped(struct wpa_supplicant *wpa_s)
+{
+#ifdef CONFIG_P2P
+	wpas_dbus_signal_find_stopped(wpa_s);
+#endif /* CONFIG_P2P */
+}
+
+
 void wpas_notify_wps_credential(struct wpa_supplicant *wpa_s,
 				const struct wps_credential *cred)
 {
@@ -592,6 +600,21 @@ void wpas_notify_p2p_sd_response(struct wpa_supplicant *wpa_s,
 {
 	wpas_dbus_signal_p2p_sd_response(wpa_s, sa, update_indic,
 					 tlvs, tlvs_len);
+}
+
+void wpas_notify_p2p_group_formation_failure(
+				struct wpa_supplicant *wpa_s)
+{
+	wpas_dbus_signal_p2p_group_formation_failure(wpa_s);
+}
+
+
+void wpas_notify_p2p_invitation_received(struct wpa_supplicant *wpa_s,
+				       const u8 *sa, const u8 *go_dev_add,
+				       const u8 *bssid,int id,int op_freq)
+{
+	wpas_dbus_signal_p2p_invitation_received(wpa_s, sa, go_dev_add,bssid,
+							id,op_freq);
 }
 
 

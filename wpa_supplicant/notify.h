@@ -37,6 +37,7 @@ void wpas_notify_network_request(struct wpa_supplicant *wpa_s,
 				 const char *default_txt);
 void wpas_notify_scanning(struct wpa_supplicant *wpa_s);
 void wpas_notify_scan_done(struct wpa_supplicant *wpa_s, int success);
+void wpas_notify_find_stopped(struct wpa_supplicant *wpa_s);
 void wpas_notify_scan_results(struct wpa_supplicant *wpa_s);
 void wpas_notify_wps_credential(struct wpa_supplicant *wpa_s,
 				const struct wps_credential *cred);
@@ -133,5 +134,10 @@ void wpas_notify_network_bssid_set_changed(struct wpa_supplicant *wpa_s,
 					   struct wpa_ssid *ssid);
 void wpas_notify_network_type_changed(struct wpa_supplicant *wpa_s,
 				      struct wpa_ssid *ssid);
+void wpas_notify_p2p_group_formation_failure(
+					   struct wpa_supplicant *wpa_s);
+void wpas_notify_p2p_invitation_received(struct wpa_supplicant *wpa_s,
+			    const u8 *sa, const u8 *go_dev_add,
+			    const u8 *bssid,int id,int op_freq);
 
 #endif /* NOTIFY_H */

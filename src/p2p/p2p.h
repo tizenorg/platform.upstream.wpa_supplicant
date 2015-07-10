@@ -453,6 +453,13 @@ struct p2p_config {
 	 */
 	size_t num_sec_dev_types;
 
+#ifdef BCM_DRIVER_V115
+	/**
+	 * own_addr - Device Own MAC Address
+	 */
+	u8 own_addr[ETH_ALEN];
+#endif
+
 	/**
 	 * dev_addr - P2P Device Address
 	 */
@@ -1915,6 +1922,9 @@ int p2p_set_listen_channel(struct p2p_data *p2p, u8 reg_class, u8 channel,
 u8 p2p_get_listen_channel(struct p2p_data *p2p);
 
 int p2p_set_ssid_postfix(struct p2p_data *p2p, const u8 *postfix, size_t len);
+
+int p2p_get_member_in_go_dev(struct p2p_data *p2p, const u8 *dev_addr,
+			   u8 *member_in_go_dev);
 
 int p2p_get_interface_addr(struct p2p_data *p2p, const u8 *dev_addr,
 			   u8 *iface_addr);
