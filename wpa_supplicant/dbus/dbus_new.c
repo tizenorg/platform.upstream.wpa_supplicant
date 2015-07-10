@@ -25,6 +25,12 @@
 #include "dbus_new_handlers_p2p.h"
 #include "p2p/p2p.h"
 #include "../p2p_supplicant.h"
+#if defined TIZEN_EXT
+#include "ap/hostapd.h"
+#include "ap/sta_info.h"
+#include "ap/wpa_auth.h"
+#include "rsn_supp/wpa.h"
+#endif /* TIZEN_EXT */
 
 #ifdef CONFIG_AP /* until needed by something else */
 
@@ -218,6 +224,36 @@ void wpas_dbus_signal_scan_done(struct wpa_supplicant *wpa_s, int success)
 	dbus_message_unref(msg);
 }
 
+/**
+ * wpas_dbus_signal_find_stopped - send find stopped signal
+ * @wpa_s: %wpa_supplicant network interface data
+ *
+ * Notify listeners about scan stopped
+ */
+void wpas_dbus_signal_find_stopped(struct wpa_supplicant *wpa_s)
+{
+	struct wpas_dbus_priv *iface;
+	DBusMessage *msg;
+
+	iface = wpa_s->global->dbus;
+
+	/* Do nothing if the control interface is not turned on */
+	if (iface == NULL)
+		return;
+
+	if (wpa_s->p2p_mgmt)
+		wpa_s = wpa_s->parent;
+
+	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+				WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+				"FindStopped");
+	if (msg == NULL)
+		return;
+
+	dbus_connection_send(iface->con, msg, NULL);
+
+	dbus_message_unref(msg);
+}
 
 /**
  * wpas_dbus_signal_bss - Send a BSS related event signal
@@ -1201,6 +1237,9 @@ void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 	DBusMessageIter iter, dict_iter;
 	struct wpas_dbus_priv *iface;
 	struct wpa_supplicant *parent;
+#if defined TIZEN_EXT
+	u8 ip[3 * 4];
+#endif /* TIZEN_EXT */
 
 	parent = wpa_s->parent;
 	if (parent->p2p_mgmt)
@@ -1235,14 +1274,26 @@ void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 	    !wpa_dbus_dict_append_string(&dict_iter, "role",
 					 client ? "client" : "GO") ||
 	    !wpa_dbus_dict_append_object_path(&dict_iter, "group_object",
-					      wpa_s->dbus_groupobj_path) ||
-	    !wpa_dbus_dict_close_write(&iter, &dict_iter)) {
+					      wpa_s->dbus_groupobj_path))
+		goto err;
+#if defined TIZEN_EXT
+	if(client && (wpa_sm_get_p2p_ip_addr(wpa_s->wpa, ip) == 0))
+		if(!wpa_dbus_dict_append_byte_array(&dict_iter,
+					      "IpAddr",(char *) ip, 4) ||
+				!wpa_dbus_dict_append_byte_array(&dict_iter,
+					      "IpAddrMask",(char *) ip + 4, 4) ||
+				!wpa_dbus_dict_append_byte_array(&dict_iter,
+					      "IpAddrGo",(char *) ip + 8, 4))
+			goto err;
+#endif /* TIZEN_EXT */
+	if(!wpa_dbus_dict_close_write(&iter, &dict_iter)) {
 		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
 	} else {
 		dbus_connection_send(iface->con, msg, NULL);
 		if (client)
 			peer_groups_changed(wpa_s);
 	}
+err:
 	dbus_message_unref(msg);
 }
 
@@ -1426,6 +1477,12 @@ void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 	DBusMessageIter iter;
 	char peer_obj_path[WPAS_DBUS_OBJECT_PATH_MAX], *path;
 	struct wpa_supplicant *parent;
+#if defined TIZEN_EXT
+	DBusMessageIter array_iter;
+	struct hostapd_data *hapd;
+	struct sta_info *sta;
+	u8 ip_addr[4] = {0,};
+#endif /* TIZEN_EXT */
 
 	iface = wpa_s->global->dbus;
 
@@ -1439,7 +1496,13 @@ void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 	parent = wpa_s->parent;
 	if (parent->p2p_mgmt)
 		parent = parent->parent;
-
+#if defined TIZEN_EXT
+	if (wpa_s->ap_iface != NULL &&
+	    (hapd = wpa_s->ap_iface->bss[0]) != NULL &&
+	    (sta = ap_get_sta_p2p(hapd, peer_addr)) != NULL &&
+	    sta->wpa_sm != NULL)
+		wpa_auth_get_ip_addr(sta->wpa_sm, ip_addr);
+#endif /* TIZEN_EXT */
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 			"%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/"
 			COMPACT_MACSTR,
@@ -1454,7 +1517,16 @@ void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 	dbus_message_iter_init_append(msg, &iter);
 	path = peer_obj_path;
 	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
-					    &path)) {
+					    &path)
+#if defined TIZEN_EXT
+			||
+			!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					    DBUS_TYPE_BYTE_AS_STRING, &array_iter) ||
+			!dbus_message_iter_append_fixed_array(&array_iter,
+					    DBUS_TYPE_BYTE, &ip_addr, 4) ||
+			!dbus_message_iter_close_container(&iter, &array_iter)
+#endif /* TIZEN_EXT */
+			) {
 		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
 	} else {
 		dbus_connection_send(iface->con, msg, NULL);
@@ -1783,8 +1855,111 @@ void wpas_dbus_signal_p2p_wps_failed(struct wpa_supplicant *wpa_s,
 	dbus_message_unref(msg);
 }
 
-#endif /* CONFIG_P2P */
 
+/**
+ * wpas_dbus_signal_p2p_group_formation_failure - Signals GroupFormationFailure event
+ * @wpa_s: %wpa_supplicant network interface data
+ *
+ * Sends Event dbus signal without any param
+ */
+void wpas_dbus_signal_p2p_group_formation_failure (
+					struct wpa_supplicant *wpa_s)
+{
+
+	DBusMessage *msg;
+	struct wpas_dbus_priv *iface;
+
+	iface = wpa_s->global->dbus;
+
+	/* Do nothing if the control interface is not turned on */
+	if (iface == NULL)
+		return;
+
+	if (wpa_s->p2p_mgmt)
+		wpa_s = wpa_s->parent;
+
+	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+				      "GroupFormationFailure");
+	if (msg == NULL)
+		return;
+
+	dbus_connection_send(iface->con, msg, NULL);
+
+	dbus_message_unref(msg);
+}
+
+/**
+ *
+ * Method to emit Invitation Received signal
+ * @wpa_s: %wpa_supplicant network interface data
+ * @sa: Source address of the Invitation Request
+ * @dev_add: GO Device Addres
+ * @bssid: P2P Group BSSID or %NULL if not received
+ * @id: persistent group id or %0 if not persistent group
+ * @op_freq : Operational frequency for the group
+ */
+
+void wpas_dbus_signal_p2p_invitation_received(struct wpa_supplicant *wpa_s,
+					    const u8 *sa,const u8 *dev_add,const u8 *bssid,
+					    int id, int op_freq)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter, dict_iter;
+	struct wpas_dbus_priv *iface;
+
+	wpa_printf(MSG_DEBUG, "%s", __func__);
+
+	iface = wpa_s->global->dbus;
+	/* Do nothing if the control interface is not turned on */
+	if (iface == NULL)
+		return;
+
+	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+				      "InvitationReceived");
+
+	if (msg == NULL)
+		return;
+
+	if (wpa_s->p2p_mgmt)
+		wpa_s = wpa_s->parent;
+
+	dbus_message_iter_init_append(msg, &iter);
+	if (!wpa_dbus_dict_open_write(&iter, &dict_iter))
+		goto nomem;
+
+	if (sa) {
+		if (!wpa_dbus_dict_append_byte_array(&dict_iter, "sa",
+						     (const char *) sa, ETH_ALEN))
+			goto nomem;
+	}
+	if (dev_add) {
+		if (!wpa_dbus_dict_append_byte_array(&dict_iter, "go_dev_add",
+						     (const char *) dev_add, ETH_ALEN))
+			goto nomem;
+	}
+	if (bssid) {
+		if (!wpa_dbus_dict_append_byte_array(&dict_iter, "bssid",
+						     (const char *) bssid, ETH_ALEN))
+			goto nomem;
+	}
+	if (!wpa_dbus_dict_append_int32(&dict_iter, "persistent_id", id))
+		goto nomem;
+
+	if (!wpa_dbus_dict_append_int32(&dict_iter, "op_freq", op_freq))
+		goto nomem;
+
+	if (!wpa_dbus_dict_close_write(&iter, &dict_iter))
+		goto nomem;
+
+	dbus_connection_send(iface->con, msg, NULL);
+
+nomem:
+	dbus_message_unref(msg);
+}
+
+#endif /*CONFIG_P2P*/
 
 /**
  * wpas_dbus_signal_prop_changed - Signals change of property
@@ -2558,6 +2733,12 @@ static const struct wpa_dbus_method_desc wpas_dbus_interface_methods[] = {
 		  END_ARGS
 	  }
 	},
+	{ "Cancel", WPAS_DBUS_NEW_IFACE_WPS,
+	  (WPADBusMethodHandler) wpas_dbus_handler_wps_cancel,
+	  {
+		END_ARGS
+	  }
+	},
 #endif /* CONFIG_WPS */
 #ifdef CONFIG_P2P
 	{ "Find", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
@@ -2610,10 +2791,17 @@ static const struct wpa_dbus_method_desc wpas_dbus_interface_methods[] = {
 		  END_ARGS
 	  }
 	},
+	{ "Cancel", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+	  (WPADBusMethodHandler) wpas_dbus_handler_p2p_cancel,
+	  {
+		  END_ARGS
+	  }
+	},
 	{ "GroupAdd", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
 	  (WPADBusMethodHandler) wpas_dbus_handler_p2p_group_add,
 	  {
 		  { "args", "a{sv}", ARG_IN },
+		  { "path", "o", ARG_OUT },
 		  END_ARGS
 	  }
 	},
@@ -2634,6 +2822,14 @@ static const struct wpa_dbus_method_desc wpas_dbus_interface_methods[] = {
 	  (WPADBusMethodHandler) wpas_dbus_handler_p2p_rejectpeer,
 	  {
 		  { "peer", "o", ARG_IN },
+		  END_ARGS
+	  }
+	},
+	{ "RemoveClient", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+	  (WPADBusMethodHandler) wpas_dbus_handler_p2p_removeclient,
+	  {
+		  { "peer", "o", ARG_IN },
+		  { "remove_persistent", "i", ARG_IN },
 		  END_ARGS
 	  }
 	},
@@ -3096,6 +3292,18 @@ static const struct wpa_dbus_signal_desc wpas_dbus_interface_signals[] = {
 		  END_ARGS
 	  }
 	},
+	{ "GroupFormationFailure", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+	  {
+		  { "path", "o", ARG_OUT },
+		  END_ARGS
+	  }
+	},
+	{ "InvitationReceived", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+	  {
+		{ "properties", "a{sv}", ARG_OUT },
+		END_ARGS
+	  }
+	},
 	{ "GroupFinished", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
 	  {
 		  { "properties", "a{sv}", ARG_OUT },
@@ -3305,6 +3513,10 @@ static const struct wpa_dbus_property_desc wpas_dbus_p2p_peer_properties[] = {
 	},
 	{ "DeviceAddress", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
 	  wpas_dbus_getter_p2p_peer_device_address,
+	  NULL
+	},
+	{ "InterfacedAddress", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
+		wpas_dbus_getter_p2p_peer_interface_address,
 	  NULL
 	},
 	{ "Groups", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ao",
@@ -3571,6 +3783,9 @@ static const struct wpa_dbus_signal_desc wpas_dbus_p2p_group_signals[] = {
 	{ "PeerJoined", WPAS_DBUS_NEW_IFACE_P2P_GROUP,
 	  {
 		  { "peer", "o", ARG_OUT },
+#if defined TIZEN_EXT
+		  { "ip_address", "ay", ARG_OUT },
+#endif /* TIZEN_EXT */
 		  END_ARGS
 	  }
 	},

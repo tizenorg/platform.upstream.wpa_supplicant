@@ -722,7 +722,17 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s,
 	if (state == WPA_COMPLETED && wpa_s->new_connection) {
 		struct wpa_ssid *ssid = wpa_s->current_ssid;
 #if defined(CONFIG_CTRL_IFACE) || !defined(CONFIG_NO_STDOUT_DEBUG)
+#ifdef TIZEN_EXT_P2P
+		if (wpa_s->ifname && (os_strcmp(wpa_s->ifname , "p2p-wlan0-0") == 0))
+			wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_CONNECTED "- Connection to "
+				MACSTR " completed [id=%d id_str=%s]",
+				MAC2STR(wpa_s->bssid),
+				ssid ? ssid->id : -1,
+				ssid && ssid->id_str ? ssid->id_str : "");
+			wpa_msg(wpa_s->parent, MSG_INFO, WPA_EVENT_CONNECTED "- Connection to "
+#else
 		wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_CONNECTED "- Connection to "
+#endif
 			MACSTR " completed [id=%d id_str=%s]",
 			MAC2STR(wpa_s->bssid),
 			ssid ? ssid->id : -1,
@@ -751,6 +761,16 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s,
 	}
 	wpa_s->wpa_state = state;
 
+#if defined TIZEN_EXT
+	if (state == WPA_DISCONNECTED) {
+		struct wpa_ssid *ssid = wpa_s->current_ssid;
+		wpa_msg(wpa_s->parent, MSG_INFO, WPA_EVENT_DISCONNECTED "- Disconnection to "
+				MACSTR " completed [id=%d id_str=%s]",
+				MAC2STR(wpa_s->bssid),
+				ssid ? ssid->id : -1,
+				ssid && ssid->id_str ? ssid->id_str : "");
+	}
+#endif
 #ifdef CONFIG_BGSCAN
 	if (state == WPA_COMPLETED)
 		wpa_supplicant_start_bgscan(wpa_s);

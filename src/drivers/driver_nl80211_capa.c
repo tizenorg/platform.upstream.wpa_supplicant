@@ -648,7 +648,9 @@ static int wpa_driver_nl80211_get_info(struct wpa_driver_nl80211_data *drv,
 	/* default to 5000 since early versions of mac80211 don't set it */
 	if (!drv->capa.max_remain_on_chan)
 		drv->capa.max_remain_on_chan = 5000;
-
+#ifdef BCM_DRIVER_V115
+	info->device_ap_sme = 1;
+#endif
 	if (info->channel_switch_supported)
 		drv->capa.flags |= WPA_DRIVER_FLAGS_AP_CSA;
 	drv->capa.wmm_ac_supported = info->wmm_ac_supported;
@@ -840,7 +842,11 @@ int wpa_driver_nl80211_capa(struct wpa_driver_nl80211_data *drv)
 	 * If poll command and tx status are supported, mac80211 is new enough
 	 * to have everything we need to not need monitor interfaces.
 	 */
+#ifdef BCM_DRIVER_V115
+	drv->use_monitor = 0;
+#else
 	drv->use_monitor = !info.poll_command_supported || !info.data_tx_status;
+#endif
 
 	if (drv->device_ap_sme && drv->use_monitor) {
 		/*

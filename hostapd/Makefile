@@ -12,6 +12,9 @@ CFLAGS += -I$(abspath ../src/utils)
 
 export BINDIR ?= /usr/local/bin/
 
+CFLAGS += -fPIE
+LDFLAGS += -pie
+
 # Uncomment following line and set the path to your kernel tree include
 # directory if your C library does not include all header files.
 # CFLAGS += -DUSE_KERNEL_HEADERS -I/usr/src/linux/include
@@ -65,6 +68,20 @@ OBJS += ../src/ap/beacon.o
 OBJS += ../src/ap/bss_load.o
 
 OBJS_c = hostapd_cli.o ../src/common/wpa_ctrl.o ../src/utils/os_$(CONFIG_OS).o
+
+ifdef TIZEN_EXT
+CFLAGS += -DTIZEN_EXT
+CFLAGS += -DTIZEN_EXT_SOFTAP
+ifdef CONFIG_BCM_DRIVER_V115
+CFLAGS += -DBCM_DRIVER_V115
+endif
+CFLAGS += -I../src/drivers
+
+# To force sizeof(enum) = 4
+ifeq ($(TARGET_ARCH),arm)
+CFLAGS += -mabi=aapcs-linux
+endif
+endif
 
 NEED_RC4=y
 NEED_AES=y
@@ -937,10 +954,16 @@ verify_config:
 		exit 1; \
 	fi
 
+install: all
+ifdef TIZEN_EXT
+	mkdir -p $(DESTDIR)/usr/sbin
+	for i in $(ALL); do cp -f $$i $(DESTDIR)/usr/sbin/$$i; done
+else
 $(DESTDIR)$(BINDIR)/%: %
 	install -D $(<) $(@)
 
 install: $(addprefix $(DESTDIR)$(BINDIR)/,$(ALL))
+endif
 
 ../src/drivers/build.hostapd:
 	@if [ -f ../src/drivers/build.wpa_supplicant ]; then \

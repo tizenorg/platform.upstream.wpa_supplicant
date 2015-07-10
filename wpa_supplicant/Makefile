@@ -6,13 +6,16 @@ ifndef CFLAGS
 CFLAGS = -MMD -O2 -Wall -g
 endif
 
-export LIBDIR ?= /usr/local/lib/
-export BINDIR ?= /usr/local/sbin/
+export LIBDIR ?= /usr/lib
+export BINDIR ?= /usr/sbin
 PKG_CONFIG ?= pkg-config
 
 CFLAGS += $(EXTRA_CFLAGS)
 CFLAGS += -I$(abspath ../src)
 CFLAGS += -I$(abspath ../src/utils)
+
+CFLAGS += -fPIE
+LDFLAGS += -pie
 
 -include .config
 
@@ -82,6 +85,15 @@ OBJS_c = wpa_cli.o ../src/common/wpa_ctrl.o
 OBJS_c += ../src/utils/wpa_debug.o
 OBJS_c += ../src/utils/common.o
 OBJS += wmm_ac.o
+
+CFLAGS += -DTIZEN_EXT
+CFLAGS += -DTIZEN_EXT_P2P
+#ifdef CONFIG_BCM_DRIVER_V115
+#CFLAGS += -DBCM_DRIVER_V115
+#endif
+ifdef CONFIG_TIZEN_MOBILE
+CFLAGS += -DTIZEN_MOBILE
+endif
 
 ifndef CONFIG_OS
 ifdef CONFIG_NATIVE_WINDOWS

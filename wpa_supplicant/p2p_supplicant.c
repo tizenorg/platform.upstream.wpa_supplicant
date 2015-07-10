@@ -876,6 +876,12 @@ static int wpas_p2p_group_delete(struct wpa_supplicant *wpa_s,
 	 */
 	wpa_s->global->p2p_go_wait_client.sec = 0;
 
+#ifdef TIZEN_EXT_P2P
+	/* Currently Tizen uses just one group interface.
+	 * So, group index should be decreased when group interface removed.
+	*/
+	wpa_s->parent->p2p_group_idx--;
+#endif /* TIZEN_EXT_P2P */
 	if (wpa_s->p2p_group_interface != NOT_P2P_GROUP_INTERFACE) {
 		struct wpa_global *global;
 		char *ifname;
@@ -1253,6 +1259,8 @@ static void wpas_group_formation_completed(struct wpa_supplicant *wpa_s,
 			       P2P_EVENT_GROUP_FORMATION_FAILURE);
 		wpas_p2p_group_delete(wpa_s,
 				      P2P_GROUP_REMOVAL_FORMATION_FAILED);
+		wpa_printf(MSG_INFO, "dbus: Notify Group Formation Failure");
+		wpas_notify_p2p_group_formation_failure(wpa_s);
 		return;
 	}
 
@@ -2248,6 +2256,7 @@ static void wpas_find_stopped(void *ctx)
 {
 	struct wpa_supplicant *wpa_s = ctx;
 	wpa_msg_global(wpa_s, MSG_INFO, P2P_EVENT_FIND_STOPPED);
+	wpas_notify_find_stopped(wpa_s);
 }
 
 
@@ -4026,6 +4035,8 @@ static void wpas_invitation_received(void *ctx, const u8 *sa, const u8 *bssid,
 				       " unknown-network",
 				       MAC2STR(sa), MAC2STR(go_dev_addr));
 		}
+		wpas_notify_p2p_invitation_received(wpa_s,sa,go_dev_addr,bssid,
+							0,op_freq);
 		return;
 	}
 
@@ -4038,6 +4049,8 @@ static void wpas_invitation_received(void *ctx, const u8 *sa, const u8 *bssid,
 			       "sa=" MACSTR " persistent=%d",
 			       MAC2STR(sa), s->id);
 	}
+	wpas_notify_p2p_invitation_received(wpa_s,sa,go_dev_addr,bssid,
+						s->id,op_freq);
 }
 
 
@@ -4963,7 +4976,7 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 					P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE :
 					0);
 			} else if (response_done) {
-				wpas_p2p_group_add(wpa_s, 1, 0, 0, 0);
+				wpas_p2p_group_add(wpa_s, 1, 0, 0, 0, NULL);
 			}
 
 			if (passwd_id == DEV_PW_P2PS_DEFAULT) {
@@ -5061,7 +5074,7 @@ static int wpas_prov_disc_resp_cb(void *ctx)
 			persistent_go->mode == WPAS_MODE_P2P_GO ?
 			P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE : 0);
 	} else {
-		wpas_p2p_group_add(wpa_s, 1, 0, 0, 0);
+		wpas_p2p_group_add(wpa_s, 1, 0, 0, 0, NULL);
 	}
 
 	return 1;
@@ -5122,7 +5135,16 @@ int wpas_p2p_init(struct wpa_global *global, struct wpa_supplicant *wpa_s)
 	p2p.prov_disc_resp_cb = wpas_prov_disc_resp_cb;
 	p2p.p2ps_group_capability = p2ps_group_capability;
 
+#ifdef BCM_DRIVER_V115
+	char buf[64];
+	wpa_s->driver->priv_cmd(wpa_s->drv_priv,  "P2P_DEV_ADDR", buf, sizeof(buf));
+	os_memcpy(wpa_s->global->p2p_dev_addr, buf, ETH_ALEN);
+	wpa_printf(MSG_DEBUG, "P2P: Device address ("MACSTR")", MAC2STR(buf));
+	os_memcpy(p2p.own_addr, wpa_s->own_addr, ETH_ALEN);
+#else
 	os_memcpy(wpa_s->global->p2p_dev_addr, wpa_s->own_addr, ETH_ALEN);
+#endif
+
 	os_memcpy(p2p.dev_addr, wpa_s->global->p2p_dev_addr, ETH_ALEN);
 	p2p.dev_name = wpa_s->conf->device_name;
 	p2p.manufacturer = wpa_s->conf->manufacturer;
@@ -5425,6 +5447,7 @@ static void wpas_p2p_check_join_scan_limit(struct wpa_supplicant *wpa_s)
 		}
 		wpa_msg_global(wpa_s->parent, MSG_INFO,
 			       P2P_EVENT_GROUP_FORMATION_FAILURE);
+		wpas_notify_p2p_group_formation_failure(wpa_s);
 	}
 }
 
@@ -5635,6 +5658,7 @@ static void wpas_p2p_scan_res_join(struct wpa_supplicant *wpa_s,
 			wpa_msg_global(wpa_s->parent, MSG_INFO,
 				       P2P_EVENT_GROUP_FORMATION_FAILURE
 				       "reason=FREQ_CONFLICT");
+			wpas_notify_p2p_group_formation_failure(wpa_s);
 			return;
 		}
 
@@ -6584,7 +6608,7 @@ wpas_p2p_get_group_iface(struct wpa_supplicant *wpa_s, int addr_allocated,
  * i.e., without using Group Owner Negotiation.
  */
 int wpas_p2p_group_add(struct wpa_supplicant *wpa_s, int persistent_group,
-		       int freq, int ht40, int vht)
+		       int freq, int ht40, int vht, char *passphrase)
 {
 	struct p2p_go_neg_results params;
 
@@ -6625,6 +6649,9 @@ int wpas_p2p_group_add(struct wpa_supplicant *wpa_s, int persistent_group,
 	p2p_go_params(wpa_s->global->p2p, &params);
 	params.persistent_group = persistent_group;
 
+	if(passphrase != NULL) {
+		os_strlcpy(params.passphrase, passphrase, 64);
+	}
 	wpa_s = wpas_p2p_get_group_iface(wpa_s, 0, 1);
 	if (wpa_s == NULL)
 		return -1;

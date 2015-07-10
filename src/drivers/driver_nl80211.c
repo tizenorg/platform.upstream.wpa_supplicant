@@ -12,6 +12,9 @@
 
 #include "includes.h"
 #include <sys/types.h>
+#ifdef BCM_DRIVER_V115
+#include <sys/ioctl.h>
+#endif
 #include <fcntl.h>
 #include <net/if.h>
 #include <netlink/genl/genl.h>
@@ -2234,6 +2237,15 @@ wpa_driver_nl80211_finish_drv_init(struct wpa_driver_nl80211_data *drv,
 		return -1;
 	os_memcpy(drv->perm_addr, bss->addr, ETH_ALEN);
 
+#ifdef BCM_DRIVER_V115
+	wpa_printf(MSG_DEBUG, "nl80211: USE private CMD P2P_DEV_ADDR");
+	int wpa_driver_nl80211_priv_cmd_bcm(void *priv, char *cmd, char *buf,
+			size_t buf_len );
+	char buf[64];
+	wpa_driver_nl80211_priv_cmd_bcm(bss,"P2P_DEV_ADDR",buf, sizeof(buf));
+	os_memcpy(bss->dev_addr, buf, ETH_ALEN);
+	wpa_printf(MSG_MSGDUMP, "nl80211: MLME event A1=" MACSTR, MAC2STR(bss->dev_addr));
+#endif /* BCM_DRIVER_V115 */
 	if (send_rfkill_event) {
 		eloop_register_timeout(0, 0, wpa_driver_nl80211_send_rfkill,
 				       drv, drv->ctx);
@@ -2871,8 +2883,12 @@ static int wpa_driver_nl80211_authenticate(
 	else
 		os_memset(drv->auth_attempt_bssid, 0, ETH_ALEN);
 	/* FIX: IBSS mode */
+#ifdef BCM_DRIVER_V115
+	nlmode = NL80211_IFTYPE_STATION;
+#else
 	nlmode = params->p2p ?
 		NL80211_IFTYPE_P2P_CLIENT : NL80211_IFTYPE_STATION;
+#endif
 	if (drv->nlmode != nlmode &&
 	    wpa_driver_nl80211_set_mode(bss, nlmode) < 0)
 		return -1;
@@ -3518,6 +3534,11 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 			bss->bandwidth = params->freq->bandwidth;
 		}
 	}
+
+#ifdef BCM_DRIVER_V115
+	wpa_driver_nl80211_probe_req_report(priv, 1);
+#endif
+
 	return ret;
 fail:
 	nlmsg_free(msg);
@@ -4288,13 +4309,16 @@ static int wpa_driver_nl80211_ap(struct wpa_driver_nl80211_data *drv,
 {
 	enum nl80211_iftype nlmode, old_mode;
 
+#ifdef BCM_DRIVER_V115
+	nlmode = NL80211_IFTYPE_AP;
+#else
 	if (params->p2p) {
 		wpa_printf(MSG_DEBUG, "nl80211: Setup AP operations for P2P "
 			   "group (GO)");
 		nlmode = NL80211_IFTYPE_P2P_GO;
 	} else
 		nlmode = NL80211_IFTYPE_AP;
-
+#endif
 	old_mode = drv->nlmode;
 	if (wpa_driver_nl80211_set_mode(drv->first_bss, nlmode)) {
 		nl80211_remove_monitor_interface(drv);
@@ -5765,13 +5789,21 @@ static enum nl80211_iftype wpa_driver_nl80211_if_type(
 		return NL80211_IFTYPE_STATION;
 	case WPA_IF_P2P_CLIENT:
 	case WPA_IF_P2P_GROUP:
+#ifdef BCM_DRIVER_V115
+		return NL80211_IFTYPE_STATION;
+#else
 		return NL80211_IFTYPE_P2P_CLIENT;
+#endif
 	case WPA_IF_AP_VLAN:
 		return NL80211_IFTYPE_AP_VLAN;
 	case WPA_IF_AP_BSS:
 		return NL80211_IFTYPE_AP;
 	case WPA_IF_P2P_GO:
+#ifdef BCM_DRIVER_V115
+		return NL80211_IFTYPE_AP;
+#else
 		return NL80211_IFTYPE_P2P_GO;
+#endif
 	case WPA_IF_P2P_DEVICE:
 		return NL80211_IFTYPE_P2P_DEVICE;
 	case WPA_IF_MESH:
@@ -6107,7 +6139,9 @@ static int nl80211_send_frame_cmd(struct i802_bss *bss,
 
 	if (!(msg = nl80211_cmd_msg(bss, 0, NL80211_CMD_FRAME)) ||
 	    (freq && nla_put_u32(msg, NL80211_ATTR_WIPHY_FREQ, freq)) ||
+#ifndef BCM_DRIVER_V115
 	    (wait && nla_put_u32(msg, NL80211_ATTR_DURATION, wait)) ||
+#endif
 	    (offchanok && ((drv->capa.flags & WPA_DRIVER_FLAGS_OFFCHANNEL_TX) ||
 			   drv->test_use_roc_tx) &&
 	     nla_put_flag(msg, NL80211_ATTR_OFFCHANNEL_TX_OK)) ||
@@ -6312,6 +6346,46 @@ static int wpa_driver_nl80211_probe_req_report(struct i802_bss *bss, int report)
 				   (WLAN_FC_STYPE_PROBE_REQ << 4),
 				   NULL, 0) < 0)
 		goto out_err;
+
+#ifdef BCM_DRIVER_V115
+	if (drv->nlmode != NL80211_IFTYPE_AP &&
+		drv->nlmode != NL80211_IFTYPE_P2P_GO) {
+		wpa_printf(MSG_DEBUG, "nl80211: probe_req_report control only "
+			   "allowed in AP or P2P GO mode (iftype=%d)",
+			   drv->nlmode);
+		goto done;
+	}
+
+	if (nl80211_register_frame(bss, bss->nl_preq,
+			   (WLAN_FC_TYPE_MGMT << 2) |
+			   (WLAN_FC_STYPE_ASSOC_REQ << 4),
+			   NULL, 0) < 0) {
+		goto out_err;
+	}
+
+	if (nl80211_register_frame(bss, bss->nl_preq,
+			   (WLAN_FC_TYPE_MGMT << 2) |
+			   (WLAN_FC_STYPE_REASSOC_REQ << 4),
+			   NULL, 0) < 0) {
+		goto out_err;
+	}
+
+	if (nl80211_register_frame(bss, bss->nl_preq,
+			   (WLAN_FC_TYPE_MGMT << 2) |
+			   (WLAN_FC_STYPE_DISASSOC << 4),
+			   NULL, 0) < 0) {
+		goto out_err;
+	}
+
+	if (nl80211_register_frame(bss, bss->nl_preq,
+					   (WLAN_FC_TYPE_MGMT << 2) |
+					   (WLAN_FC_STYPE_DEAUTH << 4),
+					   NULL, 0) < 0) {
+		goto out_err;
+	}
+
+done:
+#endif /* BCM_DRIVER_V115 */
 
 	nl80211_register_eloop_read(&bss->nl_preq,
 				    wpa_driver_nl80211_event_receive,
@@ -7364,6 +7438,111 @@ const u8 * wpa_driver_nl80211_get_macaddr(void *priv)
 
 	return bss->addr;
 }
+
+#ifdef BCM_DRIVER_V115
+
+#define MAX_WPSP2PIE_CMD_SIZE		384
+
+typedef struct tizen_wifi_priv_cmd {
+	char *buf;
+	int used_len;
+	int total_len;
+} bcm_driver_priv_cmd;
+
+static int drv_errors = 0;
+
+static void wpa_driver_send_hang_msg(struct wpa_driver_nl80211_data *drv)
+{
+	drv_errors++;
+	if (drv_errors > 4) {
+		drv_errors = 0;
+		wpa_msg(drv->ctx, MSG_INFO, "BCM Driver State : HANGED");
+	}
+}
+
+int wpa_driver_nl80211_priv_cmd_bcm(void *priv, char *cmd, char *buf,
+				  size_t buf_len )
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	struct ifreq ifr;
+	bcm_driver_priv_cmd priv_cmd_data;
+	int ret = 0;
+
+	if (cmd)
+		wpa_printf(MSG_DEBUG, "%s = %s", __func__, cmd);
+
+	os_memcpy(buf, cmd, strlen(cmd) + 1);
+
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&priv_cmd_data, 0, sizeof(priv_cmd_data));
+	os_strlcpy(ifr.ifr_name, bss->ifname, IFNAMSIZ);
+
+	priv_cmd_data.buf = buf;
+	priv_cmd_data.used_len = buf_len;
+	priv_cmd_data.total_len = buf_len;
+	ifr.ifr_data = &priv_cmd_data;
+
+	wpa_printf(MSG_DEBUG, "[KGB_DEBUG] %s: ioctl socket [%d], ifname [%s]", __func__, drv->global->ioctl_sock, bss->ifname);
+	errno = 0;
+	if ((ret = ioctl(drv->global->ioctl_sock, SIOCDEVPRIVATE + 1, &ifr)) < 0) {
+		wpa_printf(MSG_ERROR, "%s: failed to issue private commands. Error [%s]", __func__, strerror(errno));
+		wpa_driver_send_hang_msg(drv);
+	} else {
+		drv_errors = 0;
+		ret = 0;
+		if ((os_strcasecmp(cmd, "LINKSPEED") == 0) ||
+		    (os_strcasecmp(cmd, "RSSI") == 0) ||
+		    (os_strcasecmp(cmd, "GETBAND") == 0) ||
+		    (os_strcasecmp(cmd, "P2P_GET_NOA") == 0))
+			ret = strlen(buf);
+
+		wpa_printf(MSG_DEBUG, "%s %s len = %d, %d", __func__, buf, ret, strlen(buf));
+	}
+	return ret;
+}
+
+int wpa_driver_nl80211_set_ap_wps_p2p_ie(void *priv, const struct wpabuf *beacon,
+				 const struct wpabuf *proberesp,
+				 const struct wpabuf *assocresp)
+{
+	char buf[MAX_WPSP2PIE_CMD_SIZE+768];
+	struct wpabuf *ap_wps_p2p_ie = NULL;
+	char *_cmd = "SET_AP_WPS_P2P_IE";
+	char *pbuf;
+	int ret = 0;
+	int i;
+	struct cmd_desc {
+		int cmd;
+		const struct wpabuf *src;
+	} cmd_arr[] = {
+		{0x1, beacon},
+		{0x2, proberesp},
+		{0x4, assocresp},
+		{-1, NULL}
+	};
+
+	wpa_printf(MSG_DEBUG, "%s: Entry", __func__);
+	for (i = 0; cmd_arr[i].cmd != -1; i++) {
+		os_memset(buf, 0, sizeof(buf));
+		pbuf = buf;
+		pbuf += sprintf(pbuf, "%s %d", _cmd, cmd_arr[i].cmd);
+		*pbuf++ = '\0';
+		ap_wps_p2p_ie = cmd_arr[i].src ?
+			wpabuf_dup(cmd_arr[i].src) : NULL;
+		if (ap_wps_p2p_ie) {
+			os_memcpy(pbuf, wpabuf_head(ap_wps_p2p_ie), wpabuf_len(ap_wps_p2p_ie));
+			ret = wpa_driver_nl80211_priv_cmd_bcm(priv, buf, buf,
+				strlen(_cmd) + 3 + wpabuf_len(ap_wps_p2p_ie));
+			wpabuf_free(ap_wps_p2p_ie);
+			if (ret < 0)
+				break;
+		}
+	}
+
+	return ret;
+}
+#endif /* BCM_DRIVER_V115 */
 
 
 static const char * scan_state_str(enum scan_states scan_state)
@@ -8509,6 +8688,10 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #endif /* CONFIG_TDLS */
 	.update_ft_ies = wpa_driver_nl80211_update_ft_ies,
 	.get_mac_addr = wpa_driver_nl80211_get_macaddr,
+#ifdef BCM_DRIVER_V115
+	.priv_cmd = wpa_driver_nl80211_priv_cmd_bcm,
+	.set_ap_wps_ie = wpa_driver_nl80211_set_ap_wps_p2p_ie,
+#endif /* BCM_DRIVER_V115 */
 	.get_survey = wpa_driver_nl80211_get_survey,
 	.status = wpa_driver_nl80211_status,
 	.switch_channel = nl80211_switch_channel,
