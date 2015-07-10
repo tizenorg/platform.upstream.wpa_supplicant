@@ -19,6 +19,9 @@
 #include "common/ieee802_11_common.h"
 #include "driver_nl80211.h"
 
+#ifdef BCM_DRIVER_V115
+#define GROUP_INTERFACE_PREFIX "p2p-wlan0"
+#endif
 
 static const char * nl80211_command_to_string(enum nl80211_commands cmd)
 {
@@ -220,6 +223,20 @@ static void mlme_event_assoc(struct wpa_driver_nl80211_data *drv,
 
 	wpa_printf(MSG_DEBUG, "nl80211: Associate event");
 	mgmt = (const struct ieee80211_mgmt *) frame;
+#ifdef BCM_DRIVER_V115
+	if (drv->nlmode == NL80211_IFTYPE_AP || drv->nlmode == NL80211_IFTYPE_P2P_GO) {
+		if (len < 24 + sizeof(mgmt->u.assoc_req)) {
+			wpa_printf(MSG_DEBUG, "nl80211: Too short association event "
+			   "frame");
+			return;
+		}
+		os_memset(&event, 0, sizeof(event));
+		event.assoc_info.freq = drv->assoc_freq;
+		event.assoc_info.req_ies = (u8 *) mgmt->u.assoc_req.variable;
+		event.assoc_info.req_ies_len = len - 24 - sizeof(mgmt->u.assoc_req);
+		event.assoc_info.addr = mgmt->sa;
+	} else {
+#endif
 	if (len < 24 + sizeof(mgmt->u.assoc_resp)) {
 		wpa_printf(MSG_DEBUG, "nl80211: Too short association event "
 			   "frame");
@@ -254,7 +271,9 @@ static void mlme_event_assoc(struct wpa_driver_nl80211_data *drv,
 	}
 
 	event.assoc_info.freq = drv->assoc_freq;
-
+#ifdef BCM_DRIVER_V115
+	}
+#endif
 	nl80211_parse_wmm_params(wmm, &event.assoc_info.wmm_params);
 
 	wpa_supplicant_event(drv->ctx, EVENT_ASSOC, &event);
@@ -518,6 +537,11 @@ static void mlme_timeout_event(struct wpa_driver_nl80211_data *drv,
 	wpa_supplicant_event(drv->ctx, ev, &event);
 }
 
+#ifdef BCM_DRIVER_V115
+static void mlme_event_deauth_disassoc(struct wpa_driver_nl80211_data *drv,
+				       enum wpa_event_type type,
+				       const u8 *frame, size_t len);
+#endif
 
 static void mlme_event_mgmt(struct i802_bss *bss,
 			    struct nlattr *freq, struct nlattr *sig,
@@ -558,6 +582,15 @@ static void mlme_event_mgmt(struct i802_bss *bss,
 	event.rx_mgmt.frame_len = len;
 	event.rx_mgmt.ssi_signal = ssi_signal;
 	event.rx_mgmt.drv_priv = bss;
+#ifdef BCM_DRIVER_V115
+	if (stype == WLAN_FC_STYPE_ASSOC_REQ) {
+		mlme_event_assoc(drv, frame, len, NULL);
+	} else if (stype == WLAN_FC_STYPE_DISASSOC) {
+		mlme_event_deauth_disassoc(drv, EVENT_DISASSOC, frame, len);
+	} else if (stype == WLAN_FC_STYPE_DEAUTH) {
+		mlme_event_deauth_disassoc(drv, EVENT_DEAUTH, frame, len);
+	} else 
+#endif
 	wpa_supplicant_event(drv->ctx, EVENT_RX_MGMT, &event);
 }
 
@@ -660,6 +693,12 @@ static void mlme_event_deauth_disassoc(struct wpa_driver_nl80211_data *drv,
 	if (type == EVENT_DISASSOC) {
 		event.disassoc_info.locally_generated =
 			!os_memcmp(mgmt->sa, drv->first_bss->addr, ETH_ALEN);
+#ifdef BCM_DRIVER_V115
+		if (drv->nlmode == NL80211_IFTYPE_AP ||
+			drv->nlmode == NL80211_IFTYPE_P2P_GO) {
+			event.disassoc_info.addr = mgmt->sa;
+		} else
+#endif /* BCM_DRIVER_V115 */
 		event.disassoc_info.addr = bssid;
 		event.disassoc_info.reason_code = reason_code;
 		if (frame + len > mgmt->u.disassoc.variable) {
@@ -683,6 +722,12 @@ static void mlme_event_deauth_disassoc(struct wpa_driver_nl80211_data *drv,
 			}
 			wpa_printf(MSG_WARNING, "nl80211: Was expecting local deauth but got another disconnect event first");
 		}
+#ifdef BCM_DRIVER_V115
+		if (drv->nlmode == NL80211_IFTYPE_AP ||
+			drv->nlmode == NL80211_IFTYPE_P2P_GO) {
+		event.deauth_info.addr = mgmt->sa;
+		} else
+#endif /* BCM_DRIVER_V115 */
 		event.deauth_info.addr = bssid;
 		event.deauth_info.reason_code = reason_code;
 		if (frame + len > mgmt->u.deauth.variable) {
@@ -770,6 +815,26 @@ static void mlme_event(struct i802_bss *bss,
 		   nl80211_command_to_string(cmd), bss->ifname,
 		   MAC2STR(bss->addr), MAC2STR(data + 4),
 		   MAC2STR(data + 4 + ETH_ALEN));
+#ifdef BCM_DRIVER_V115
+	wpa_printf(MSG_MSGDUMP, "nl80211: MLME event A1=" MACSTR, MAC2STR(bss->dev_addr));
+	if (os_strstr(bss->ifname, GROUP_INTERFACE_PREFIX )== NULL){
+		if (cmd != NL80211_CMD_FRAME_TX_STATUS && !(data[4] & 0x01) &&
+			os_memcmp(bss->dev_addr, data + 4, ETH_ALEN) != 0 &&
+			os_memcmp(bss->dev_addr, data + 4 + ETH_ALEN, ETH_ALEN) != 0) {
+			wpa_printf(MSG_MSGDUMP, "nl80211: %s: Ignore MLME frame event on wlan0"
+				   "for foreign address", bss->ifname);
+			return;
+		}
+	}else{
+		if (cmd != NL80211_CMD_FRAME_TX_STATUS && !(data[4] & 0x01) &&
+			os_memcmp(bss->addr, data + 4, ETH_ALEN) != 0 &&
+			os_memcmp(bss->addr, data + 4 + ETH_ALEN, ETH_ALEN) != 0) {
+			wpa_printf(MSG_MSGDUMP, "nl80211: %s: Ignore MLME frame event on p2p"
+				   "for foreign address", bss->ifname);
+			return;
+		}
+	}
+#else /* BCM_DRIVER_V115 */
 	if (cmd != NL80211_CMD_FRAME_TX_STATUS && !(data[4] & 0x01) &&
 	    os_memcmp(bss->addr, data + 4, ETH_ALEN) != 0 &&
 	    os_memcmp(bss->addr, data + 4 + ETH_ALEN, ETH_ALEN) != 0) {
@@ -777,6 +842,7 @@ static void mlme_event(struct i802_bss *bss,
 			   "for foreign address", bss->ifname);
 		return;
 	}
+#endif /* BCM_DRIVER_V115 */
 	wpa_hexdump(MSG_MSGDUMP, "nl80211: MLME event frame",
 		    nla_data(frame), nla_len(frame));
 
