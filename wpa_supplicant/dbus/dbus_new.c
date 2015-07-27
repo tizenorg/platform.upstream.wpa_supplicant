@@ -2738,6 +2738,13 @@ static const struct wpa_dbus_method_desc wpas_dbus_interface_methods[] = {
 		END_ARGS
 	  }
 	},
+	{ "GeneratePin", WPAS_DBUS_NEW_IFACE_WPS,
+	  (WPADBusMethodHandler) wpas_dbus_handler_wps_generate_pin,
+	  {
+		  { "generated_pin", "s", ARG_OUT },
+		  END_ARGS
+	  }
+	},
 #endif /* CONFIG_WPS */
 #ifdef CONFIG_P2P
 	{ "Find", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
@@ -3514,7 +3521,7 @@ static const struct wpa_dbus_property_desc wpas_dbus_p2p_peer_properties[] = {
 	  wpas_dbus_getter_p2p_peer_device_address,
 	  NULL
 	},
-	{ "InterfacedAddress", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
+	{ "InterfaceAddress", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
 		wpas_dbus_getter_p2p_peer_interface_address,
 	  NULL
 	},

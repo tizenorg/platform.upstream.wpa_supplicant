@@ -329,6 +329,32 @@ DBusMessage * wpas_dbus_handler_wps_cancel(DBusMessage *message,
 	return NULL;
 }
 
+DBusMessage * wpas_dbus_handler_wps_generate_pin(DBusMessage *message,
+					   struct wpa_supplicant *wpa_s)
+{
+	DBusMessage *reply = NULL;
+	char npin[9] = { '\0' };
+	char *generated_pin;
+	int new_pin;
+
+	reply = dbus_message_new_method_return(message);
+	if (reply == NULL)
+			return wpas_dbus_error_no_memory(message);
+
+	new_pin = wps_generate_pin();
+	os_snprintf(npin, sizeof(npin), "%08d", new_pin);
+	wpa_printf(MSG_DEBUG, "WPS: Randomly generated PIN: %s",
+						npin);
+	generated_pin = npin;
+
+	if (!dbus_message_append_args(reply, DBUS_TYPE_STRING,
+					 &generated_pin, DBUS_TYPE_INVALID)) {
+		dbus_message_unref(reply);
+		return wpas_dbus_error_no_memory(message);
+	}
+
+	return reply;
+}
 
 /**
  * wpas_dbus_getter_process_credentials - Check if credentials are processed
