@@ -23,7 +23,6 @@ start()
 stop()
 {
 	/usr/bin/killall wpa_supplicant
-	/bin/usleep 150000
 }
 
 case $1 in
