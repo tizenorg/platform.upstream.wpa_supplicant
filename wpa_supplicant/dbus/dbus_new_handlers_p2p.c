@@ -1665,6 +1665,33 @@ dbus_bool_t wpas_dbus_getter_p2p_peer_interface_address(DBusMessageIter *iter,
 		ETH_ALEN, error);
 }
 
+#if defined(TIZEN_EXT)
+dbus_bool_t wpas_dbus_getter_p2p_peer_intended_address(DBusMessageIter *iter,
+                                                     DBusError *error,
+                                                     void *user_data)
+{
+	struct peer_handler_args *peer_args = user_data;
+	const struct p2p_peer_info *info;
+	u8 intended_address[ETH_ALEN];
+
+	info = p2p_get_peer_found(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, 0);
+	if (info == NULL) {
+		dbus_set_error(error, DBUS_ERROR_FAILED,
+			       "failed to find peer");
+		return FALSE;
+        }
+
+	if (p2p_get_intended_addr(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, intended_address) < 0) {
+		os_memset(intended_address, 0, ETH_ALEN);
+        }
+
+	return wpas_dbus_simple_array_property_getter(
+		iter, DBUS_TYPE_BYTE, (char *) intended_address,
+		ETH_ALEN, error);
+}
+#endif /* defined(TIZEN_EXT) */
 
 struct peer_group_data {
 	struct wpa_supplicant *wpa_s;

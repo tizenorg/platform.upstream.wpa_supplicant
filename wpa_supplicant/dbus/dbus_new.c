@@ -3529,6 +3529,12 @@ static const struct wpa_dbus_property_desc wpas_dbus_p2p_peer_properties[] = {
 			wpas_dbus_getter_p2p_peer_go_device_address,
 	  NULL
 	},
+#if defined(TIZEN_EXT)
+	{ "IntendedAddress", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
+			wpas_dbus_getter_p2p_peer_intended_address,
+	  NULL
+	},
+ #endif /* defined(TIZEN_EXT) */
 	{ "Groups", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ao",
 	  wpas_dbus_getter_p2p_peer_groups,
 	  NULL

@@ -165,6 +165,16 @@ void p2p_set_intended_addr(struct p2p_data *p2p, const u8 *intended_addr)
 		os_memcpy(p2p->intended_addr, intended_addr, ETH_ALEN);
 }
 
+#if defined(TIZEN_EXT)
+int p2p_get_intended_addr(struct p2p_data *p2p, const u8 *dev_addr,
+			   u8 *intended_addr) {
+        struct p2p_device *dev = p2p_get_device(p2p, dev_addr);
+        if (dev == NULL || is_zero_ether_addr(dev->intended_addr))
+                return -1;
+        os_memcpy(intended_addr, dev->intended_addr, ETH_ALEN);
+        return 0;
+}
+#endif /* defined(TIZEN_EXT) */
 
 u16 p2p_get_provisioning_info(struct p2p_data *p2p, const u8 *addr)
 {

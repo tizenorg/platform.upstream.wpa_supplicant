@@ -1928,6 +1928,10 @@ int p2p_get_member_in_go_dev(struct p2p_data *p2p, const u8 *dev_addr,
 
 int p2p_get_interface_addr(struct p2p_data *p2p, const u8 *dev_addr,
 			   u8 *iface_addr);
+#if defined(TIZEN_EXT)
+int p2p_get_intended_addr(struct p2p_data *p2p, const u8 *dev_addr,
+			   u8 *intended_addr);
+#endif /* defined(TIZEN_EXT) */
 int p2p_get_dev_addr(struct p2p_data *p2p, const u8 *iface_addr,
 			   u8 *dev_addr);
 
