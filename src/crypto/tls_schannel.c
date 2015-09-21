@@ -416,8 +416,8 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 				    inbufs[1].pvBuffer, inbufs[1].cbBuffer);
 			if (appl_data) {
 				*appl_data = wpabuf_alloc_copy(
-					outbufs[1].pvBuffer,
-					outbufs[1].cbBuffer);
+					outbufs[0].pvBuffer,
+					outbufs[0].cbBuffer);
 			}
 			global->sspi->FreeContextBuffer(inbufs[1].pvBuffer);
 			inbufs[1].pvBuffer = NULL;
