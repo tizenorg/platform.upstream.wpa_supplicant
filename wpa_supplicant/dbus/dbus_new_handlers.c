@@ -157,7 +157,8 @@ static struct wpa_supplicant * get_iface_by_dbus_path(
 	struct wpa_supplicant *wpa_s;
 
 	for (wpa_s = global->ifaces; wpa_s; wpa_s = wpa_s->next) {
-		if (os_strcmp(wpa_s->dbus_new_path, path) == 0)
+		if (wpa_s->dbus_new_path != NULL &&
+					       os_strcmp(wpa_s->dbus_new_path, path) == 0)
 			return wpa_s;
 	}
 	return NULL;
