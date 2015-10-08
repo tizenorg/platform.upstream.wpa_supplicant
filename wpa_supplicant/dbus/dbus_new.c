@@ -143,7 +143,7 @@ static void wpas_dbus_signal_interface(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(WPAS_DBUS_NEW_PATH,
@@ -206,7 +206,7 @@ void wpas_dbus_signal_scan_done(struct wpa_supplicant *wpa_s, int success)
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -275,7 +275,7 @@ static void wpas_dbus_signal_bss(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -343,7 +343,7 @@ static void wpas_dbus_signal_blob(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -410,7 +410,7 @@ static void wpas_dbus_signal_network(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	os_snprintf(net_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
@@ -503,7 +503,7 @@ void wpas_dbus_signal_network_request(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	field = wpa_supplicant_ctrl_req_to_string(rtype, default_txt, &txt);
@@ -547,6 +547,8 @@ void wpas_dbus_signal_network_enabled_changed(struct wpa_supplicant *wpa_s,
 
 	char path[WPAS_DBUS_OBJECT_PATH_MAX];
 
+	if (!wpa_s->dbus_new_path)
+		return;
 	os_snprintf(path, WPAS_DBUS_OBJECT_PATH_MAX,
 		    "%s/" WPAS_DBUS_NEW_NETWORKS_PART "/%d",
 		    wpa_s->dbus_new_path, ssid->id);
@@ -575,7 +577,7 @@ void wpas_dbus_signal_wps_event_success(struct wpa_supplicant *wpa_s)
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -615,7 +617,7 @@ void wpas_dbus_signal_wps_event_fail(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -656,7 +658,7 @@ void wpas_dbus_signal_wps_event_m2d(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -722,7 +724,7 @@ void wpas_dbus_signal_wps_cred(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -796,7 +798,7 @@ void wpas_dbus_signal_certification(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -837,7 +839,7 @@ void wpas_dbus_signal_eap_status(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -880,7 +882,7 @@ static void wpas_dbus_signal_sta(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
@@ -952,7 +954,8 @@ void wpas_dbus_signal_p2p_group_removed(struct wpa_supplicant *wpa_s,
 	if (parent->p2p_mgmt)
 		parent = parent->parent;
 
-	if (!wpa_s->dbus_groupobj_path)
+	if (!wpa_s->dbus_groupobj_path || !wpa_s->dbus_new_path ||
+	    !parent->dbus_new_path)
 		return;
 
 	msg = dbus_message_new_signal(parent->dbus_new_path,
@@ -1020,6 +1023,8 @@ void wpas_dbus_signal_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
 
 	if (request || !status) {
 		if (config_methods & WPS_CONFIG_DISPLAY)
@@ -1109,6 +1114,8 @@ void wpas_dbus_signal_p2p_go_neg_req(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
 
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 		    "%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/" COMPACT_MACSTR,
@@ -1141,7 +1148,8 @@ static int wpas_dbus_get_group_obj_path(struct wpa_supplicant *wpa_s,
 {
 	char group_name[3];
 
-	if (os_memcmp(ssid->ssid, P2P_WILDCARD_SSID, P2P_WILDCARD_SSID_LEN))
+	if (!wpa_s->dbus_new_path ||
+	    os_memcmp(ssid->ssid, P2P_WILDCARD_SSID, P2P_WILDCARD_SSID_LEN))
 		return -1;
 
 	os_memcpy(group_name, ssid->ssid + P2P_WILDCARD_SSID_LEN, 2);
@@ -1248,7 +1256,7 @@ void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 	iface = parent->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !parent->dbus_new_path || !wpa_s->dbus_new_path)
 		return;
 
 	if (wpa_s->dbus_groupobj_path == NULL)
@@ -1323,7 +1331,7 @@ void wpas_dbus_signal_p2p_go_neg_resp(struct wpa_supplicant *wpa_s,
 
 	os_memset(freqs, 0, sizeof(freqs));
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
@@ -1437,6 +1445,8 @@ void wpas_dbus_signal_p2p_invitation_result(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
 
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
 				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
@@ -1566,6 +1576,10 @@ void wpas_dbus_signal_p2p_peer_disconnected(struct wpa_supplicant *wpa_s,
 	parent = wpa_s->parent;
 	if (parent->p2p_mgmt)
 		parent = parent->parent;
+	if (!parent->dbus_new_path)
+		return;
+	if (!parent->dbus_new_path)
+		return;
 
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 			"%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/"
@@ -1623,6 +1637,8 @@ void wpas_dbus_signal_p2p_sd_request(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
 
 	/* Check if this is a known peer */
 	if (!p2p_peer_known(wpa_s->global->p2p, sa))
@@ -1689,6 +1705,8 @@ void wpas_dbus_signal_p2p_sd_response(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
 
 	/* Check if this is a known peer */
 	if (!p2p_peer_known(wpa_s->global->p2p, sa))
@@ -1750,6 +1768,8 @@ static void wpas_dbus_signal_persistent_group(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
 
 	os_snprintf(pgrp_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 		    "%s/" WPAS_DBUS_NEW_PERSISTENT_GROUPS_PART "/%u",
@@ -1834,6 +1854,8 @@ void wpas_dbus_signal_p2p_wps_failed(struct wpa_supplicant *wpa_s,
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
 
+	if (!wpa_s->dbus_new_path)
+		return;
 	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
 				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
 				      "WpsFailed");
@@ -2035,6 +2057,9 @@ void wpas_dbus_bss_signal_prop_changed(struct wpa_supplicant *wpa_s,
 {
 	char path[WPAS_DBUS_OBJECT_PATH_MAX];
 	char *prop;
+
+	if (!wpa_s->dbus_new_path)
+		return;
 
 	switch (property) {
 	case WPAS_DBUS_BSS_PROP_SIGNAL:
@@ -2351,7 +2376,7 @@ int wpas_dbus_register_network(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_P2P */
 
 	/* Do nothing if the control interface is not turned on */
-	if (wpa_s == NULL || wpa_s->global == NULL)
+	if (wpa_s == NULL || wpa_s->global == NULL || !wpa_s->dbus_new_path)
 		return 0;
 	ctrl_iface = wpa_s->global->dbus;
 	if (ctrl_iface == NULL)
@@ -2525,7 +2550,7 @@ int wpas_dbus_unregister_bss(struct wpa_supplicant *wpa_s,
 	char bss_obj_path[WPAS_DBUS_OBJECT_PATH_MAX];
 
 	/* Do nothing if the control interface is not turned on */
-	if (wpa_s == NULL || wpa_s->global == NULL)
+	if (wpa_s == NULL || wpa_s->global == NULL || !wpa_s->dbus_new_path)
 		return 0;
 	ctrl_iface = wpa_s->global->dbus;
 	if (ctrl_iface == NULL)
@@ -2568,7 +2593,7 @@ int wpas_dbus_register_bss(struct wpa_supplicant *wpa_s,
 	struct bss_handler_args *arg;
 
 	/* Do nothing if the control interface is not turned on */
-	if (wpa_s == NULL || wpa_s->global == NULL)
+	if (wpa_s == NULL || wpa_s->global == NULL || !wpa_s->dbus_new_path)
 		return 0;
 	ctrl_iface = wpa_s->global->dbus;
 	if (ctrl_iface == NULL)
@@ -3573,7 +3598,7 @@ static void wpas_dbus_signal_peer(struct wpa_supplicant *wpa_s,
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
-	if (iface == NULL)
+	if (iface == NULL || !wpa_s->dbus_new_path)
 		return;
 
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
@@ -3650,8 +3675,9 @@ int wpas_dbus_register_peer(struct wpa_supplicant *wpa_s, const u8 *dev_addr)
 	if (ctrl_iface == NULL)
 		return 0;
 
-	if (wpa_s->p2p_mgmt)
-		wpa_s = wpa_s->parent;
+	wpa_s = wpa_s->parent->parent;
+	if (!wpa_s->dbus_new_path)
+		return 0;
 
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 		    "%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/" COMPACT_MACSTR,
@@ -3709,12 +3735,12 @@ int wpas_dbus_unregister_peer(struct wpa_supplicant *wpa_s,
 	int ret;
 
 	/* Do nothing if the control interface is not turned on */
-	if (wpa_s == NULL || wpa_s->global == NULL ||
-	    wpa_s->dbus_new_path == NULL)
+	if (wpa_s == NULL || wpa_s->global == NULL)
 		return 0;
 
-	if (wpa_s->p2p_mgmt)
-		wpa_s = wpa_s->parent;
+	wpa_s = wpa_s->parent->parent;
+	if (!wpa_s->dbus_new_path)
+		return 0;
 
 	ctrl_iface = wpa_s->global->dbus;
 	if (ctrl_iface == NULL)
@@ -3740,6 +3766,8 @@ void wpas_dbus_signal_peer_groups_changed(struct wpa_supplicant *wpa_s,
 	if (wpa_s->p2p_mgmt)
 		wpa_s = wpa_s->parent;
 
+	if (!wpa_s->dbus_new_path)
+		return;
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 		    "%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/" COMPACT_MACSTR,
 		    wpa_s->dbus_new_path, MAC2STR(dev_addr));
@@ -3944,6 +3972,9 @@ int wpas_dbus_register_persistent_group(struct wpa_supplicant *wpa_s,
 	/* Do nothing if the control interface is not turned on */
 	if (wpa_s == NULL || wpa_s->global == NULL)
 		return 0;
+	wpa_s = wpa_s->parent->parent;
+	if (!wpa_s->dbus_new_path)
+		return 0;
 
 	/* Make sure ssid is a persistent group */
 	if (ssid->disabled != 2 && !ssid->p2p_persistent_group)
@@ -4028,15 +4059,13 @@ int wpas_dbus_unregister_persistent_group(struct wpa_supplicant *wpa_s,
 	int ret;
 
 	/* Do nothing if the control interface is not turned on */
-	if (wpa_s == NULL || wpa_s->global == NULL ||
-	    wpa_s->dbus_new_path == NULL)
+	if (wpa_s == NULL || wpa_s->global == NULL)
 		return 0;
 
-	if (wpa_s->p2p_mgmt)
-		wpa_s = wpa_s->parent;
+	wpa_s = wpa_s->parent->parent;
 
 	ctrl_iface = wpa_s->global->dbus;
-	if (ctrl_iface == NULL)
+	if (ctrl_iface == NULL || !wpa_s->dbus_new_path)
 		return 0;
 
 	os_snprintf(pgrp_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
