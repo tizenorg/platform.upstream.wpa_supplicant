@@ -210,6 +210,12 @@ void wpas_dbus_signal_p2p_sd_request(struct wpa_supplicant *wpa_s,
 void wpas_dbus_signal_p2p_sd_response(struct wpa_supplicant *wpa_s,
 				      const u8 *sa, u16 update_indic,
 				      const u8 *tlvs, size_t tlvs_len);
+#if defined(TIZEN_EXT_P2PS)
+void wpas_dbus_signal_p2p_sd_asp_response(struct wpa_supplicant *wpa_s,
+				      const u8 *sa, u8 srv_trans_id, u32 adv_id,
+				      u8 svc_status, u16 config_methods,
+				      char *svc_str, char *info);
+#endif /* TIZEN_EXT_P2PS */
 void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 				const u8 *member);
 void wpas_dbus_signal_p2p_wps_failed(struct wpa_supplicant *wpa_s,
@@ -451,7 +457,15 @@ wpas_dbus_signal_p2p_sd_response(struct wpa_supplicant *wpa_s,
 				 const u8 *tlvs, size_t tlvs_len)
 {
 }
-
+#if defined(TIZEN_EXT_P2PS)
+static inline void
+void wpas_dbus_signal_p2p_sd_asp_response(struct wpa_supplicant *wpa_s,
+				 const u8 *sa, u8 srv_trans_id, u32 adv_id,
+				 u8 svc_status, u16 config_methods,
+				 char *svc_str, char *info)
+{
+}
+#endif /* TIZEN_EXT_P2PS */
 static inline void
 wpas_dbus_unregister_p2p_groupmember(struct wpa_supplicant *wpa_s,
 				     const u8 *p2p_if_addr)

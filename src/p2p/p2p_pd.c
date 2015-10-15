@@ -332,6 +332,7 @@ static struct wpabuf * p2p_build_prov_disc_resp(struct p2p_data *p2p,
 		p2p_buf_add_channel_list(buf, p2p->cfg->country,
 					 &p2p->cfg->channels);
 
+		wpa_printf(MSG_DEBUG, "P2P: status[0x%x] conncap [0x%x]", status, prov->conncap);
 		if (!persist && (status == P2P_SC_SUCCESS ||
 				 status == P2P_SC_SUCCESS_DEFERRED))
 			p2p_buf_add_connection_capability(buf, prov->conncap);
@@ -648,6 +649,9 @@ void p2p_process_prov_disc_req(struct p2p_data *p2p, const u8 *sa,
 			}
 		}
 	}
+
+	if(msg.persistent_ssid)
+		p2p_dbg(p2p, "Persistent ssid [%s]", msg.persistent_ssid);
 
 out:
 	if (reject == P2P_SC_SUCCESS ||

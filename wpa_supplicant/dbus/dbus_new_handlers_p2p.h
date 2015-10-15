@@ -164,7 +164,11 @@ dbus_bool_t wpas_dbus_getter_p2p_peer_groups(DBusMessageIter *iter,
 dbus_bool_t wpas_dbus_getter_p2p_peer_go_device_address(DBusMessageIter *iter,
 					     DBusError *error,
 					     void *user_data);
-
+#if defined(TIZEN_EXT_P2PS)
+dbus_bool_t wpas_dbus_getter_p2p_peer_advertise_service(DBusMessageIter *iter,
+					     DBusError *error,
+					     void *user_data);
+#endif /* TIZEN_EXT_P2PS */
 /*
  * P2P Group properties
  */

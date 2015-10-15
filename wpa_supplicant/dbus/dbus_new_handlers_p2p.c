@@ -76,8 +76,13 @@ DBusMessage * wpas_dbus_handler_p2p_find(DBusMessage *message,
 	unsigned int timeout = 0;
 	enum p2p_discovery_type type = P2P_FIND_START_WITH_FULL;
 	int num_req_dev_types = 0;
-	unsigned int i;
+	unsigned int i = 0;
 	u8 *req_dev_types = NULL;
+#if defined(TIZEN_EXT_P2PS)
+	char *seek[P2P_MAX_QUERY_HASH + 1];
+	u8 seek_count = 0;
+	int size = 0;
+#endif /* TIZEN_EXT_P2PS */
 
 	dbus_message_iter_init(message, &iter);
 	entry.key = NULL;
@@ -122,6 +127,36 @@ DBusMessage * wpas_dbus_handler_p2p_find(DBusMessage *message,
 				type = P2P_FIND_PROGRESSIVE;
 			else
 				goto error_clear;
+#if defined(TIZEN_EXT_P2PS)
+		} else if (os_strcmp(entry.key, "Seek") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+			    entry.array_type != WPAS_DBUS_TYPE_BINARRAY ||
+			    entry.array_len	 == 0)
+				goto error_clear;
+
+			for (i = 0; i < entry.array_len; i++)
+				if (entry.binarray_value[i] == NULL)
+						goto error_clear;
+
+			if(entry.array_len > P2P_MAX_QUERY_HASH) {
+				os_memset(seek, 0, P2P_MAX_QUERY_HASH + 1);
+				seek_count = 1;
+			} else {
+				while(seek_count < entry.array_len) {
+					size = wpabuf_len(entry.binarray_value[seek_count]);
+					if(size > P2PS_MAX_SERV_NAME_LEN)
+						goto error_clear;
+					seek[seek_count] = os_zalloc(size);
+					if(seek[seek_count] == NULL)
+						goto error_clear;
+					os_memcpy(seek[seek_count],
+							wpabuf_head(entry.binarray_value[seek_count]),
+							size);
+					seek[seek_count][size - 1] = '\0';
+					seek_count++;
+				}
+			}
+#endif /* TIZEN_EXT_P2PS */
 		} else
 			goto error_clear;
 		wpa_dbus_dict_entry_clear(&entry);
@@ -129,15 +164,30 @@ DBusMessage * wpas_dbus_handler_p2p_find(DBusMessage *message,
 
 	if (wpa_s->p2p_dev)
 		wpa_s = wpa_s->p2p_dev;
-
+#if !defined(TIZEN_EXT_P2PS)
 	wpas_p2p_find(wpa_s, timeout, type, num_req_dev_types, req_dev_types,
-		      NULL, 0, 0, NULL, 0);
+		NULL, 0, 0, NULL, 0);
+#else
+	if(!seek_count)
+		wpas_p2p_find(wpa_s, timeout, type, num_req_dev_types, req_dev_types,
+				NULL, 0, 0, NULL, 0);
+	else
+		wpas_p2p_find(wpa_s, timeout, type, num_req_dev_types, req_dev_types,
+				NULL, 0, seek_count, (const char **)seek, 0);
+
+	for(i = 0; i < seek_count; i++)
+		os_free(seek[i]);
+#endif /* TIZEN_EXT_P2PS */
 	os_free(req_dev_types);
 	return reply;
 
 error_clear:
 	wpa_dbus_dict_entry_clear(&entry);
 error:
+#if defined(TIZEN_EXT_P2PS)
+	for(i = 0; i < seek_count; i++)
+		os_free(seek[i]);
+#endif /* TIZEN_EXT_P2PS */
 	os_free(req_dev_types);
 	reply = wpas_dbus_error_invalid_args(message, entry.key);
 	return reply;
@@ -567,6 +617,10 @@ DBusMessage * wpas_dbus_handler_p2p_connect(DBusMessage *message,
 				wps_method = WPS_PIN_DISPLAY;
 			else if (os_strcmp(entry.str_value, "keypad") == 0)
 				wps_method = WPS_PIN_KEYPAD;
+#if defined(TIZEN_EXT_P2PS)
+			else if (os_strcmp(entry.str_value, "p2ps") == 0)
+				wps_method = WPS_P2PS;
+#endif /* TIZEN_EXT_P2PS */
 			else
 				goto inv_args_clear;
 		} else if (os_strcmp(entry.key, "pin") == 0 &&
@@ -1804,6 +1858,33 @@ dbus_bool_t wpas_dbus_getter_p2p_peer_go_device_address(DBusMessageIter *iter,
 		ETH_ALEN, error);
 }
 
+#if defined(TIZEN_EXT_P2PS)
+dbus_bool_t wpas_dbus_getter_p2p_peer_advertise_service(DBusMessageIter *iter,
+					     DBusError *error,
+					     void *user_data)
+{
+	//TODO : check the format of wpa_buf p2ps_instance byte array.
+	struct peer_handler_args *peer_args = user_data;
+	const struct p2p_peer_info *info;
+
+	info = p2p_get_peer_found(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, 0);
+	if (info == NULL) {
+		dbus_set_error(error, DBUS_ERROR_FAILED,
+			       "failed to find peer");
+		return FALSE;
+	}
+
+	if (info->p2ps_instance == NULL)
+		return wpas_dbus_simple_array_property_getter(iter,
+							      DBUS_TYPE_BYTE,
+							      NULL, 0, error);
+
+	return wpas_dbus_simple_array_property_getter(
+		iter, DBUS_TYPE_BYTE, (char *) info->p2ps_instance->buf,
+		info->p2ps_instance->used, error);
+}
+#endif /* TIZEN_EXT_P2PS */
 
 /**
  * wpas_dbus_getter_persistent_groups - Get array of persistent group objects
@@ -2472,6 +2553,16 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 	struct wpabuf *query = NULL;
 	struct wpabuf *resp = NULL;
 	u8 version = 0;
+#if defined(TIZEN_EXT_P2PS)
+	int asp = 0;
+	char *adv_str = NULL;
+	u32 auto_accept = 0;
+	u32 svc_state = 0xffff;
+	u32 adv_id = 0;
+	u32 config_methods = 0;
+	int replace = 0;
+	char *svc_info = NULL;
+#endif
 
 	dbus_message_iter_init(message, &iter);
 
@@ -2488,6 +2579,10 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 				upnp = 1;
 			else if (os_strcmp(entry.str_value, "bonjour") == 0)
 				bonjour = 1;
+#if defined(TIZEN_EXT_P2PS)
+			else if (os_strcmp(entry.str_value, "asp") == 0)
+				asp = 1;
+#endif /* TIZEN_EXT_P2PS */
 			else
 				goto error_clear;
 		} else if (os_strcmp(entry.key, "version") == 0 &&
@@ -2510,7 +2605,55 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 				goto error_clear;
 			resp = wpabuf_alloc_copy(entry.bytearray_value,
 						 entry.array_len);
+#if defined(TIZEN_EXT_P2PS)
+		} else if (os_strcmp(entry.key, "auto_accept") == 0 &&
+				   entry.type == DBUS_TYPE_INT32) {
+			/* Auto-Accept value is mandatory, and must be one of the
+			 *  * single values (0, 1, 2, 4) */
+				auto_accept = entry.int32_value;
+				switch (auto_accept) {
+				case P2PS_SETUP_NONE: /* No auto-accept */
+				case P2PS_SETUP_NEW:
+				case P2PS_SETUP_CLIENT:
+				case P2PS_SETUP_GROUP_OWNER:
+					break;
+				default:
+					goto error_clear;
+				}
+		} else if (os_strcmp(entry.key, "adv_id") == 0 &&
+				   entry.type == DBUS_TYPE_UINT32) {
+			/* Advertisement ID is mandatory */
+			adv_id= entry.uint32_value;
+			if(adv_id == 0 || wpas_p2p_service_p2ps_id_exists(wpa_s, adv_id))
+				goto error_clear;
+		} else if (os_strcmp(entry.key, "svc_state") == 0 &&
+				   entry.type == DBUS_TYPE_UINT32) {
+			/* svc_state between 0 - 0xff is mandatory */
+			svc_state = entry.uint32_value;
+			if(svc_state > 0xff)
+				goto error_clear;
+		} else if (os_strcmp(entry.key, "config_method") == 0 &&
+				   entry.type == DBUS_TYPE_UINT32) {
+			/* config_methods is mandatory */
+			config_methods = entry.int32_value;
+			if (!(config_methods &
+					(WPS_CONFIG_DISPLAY | WPS_CONFIG_KEYPAD | WPS_CONFIG_P2PS)))
+				goto error_clear;
+		} else if (os_strcmp(entry.key, "adv_str") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			/* Advertisement string is mandatory */
+			os_free(adv_str);
+			adv_str = os_strdup(entry.str_value);
+		} else if (os_strcmp(entry.key, "svc_info") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			/* Service and Response Information are optional */
+			os_free(svc_info);
+			svc_info = os_strdup(entry.str_value);
+		} else if (os_strcmp(entry.key, "replace") == 0 &&
+			    entry.type == DBUS_TYPE_BOOLEAN) {
+			replace = entry.bool_value;
 		}
+#endif /* TIZEN_EXT_P2PS */
 		wpa_dbus_dict_entry_clear(&entry);
 	}
 
@@ -2529,15 +2672,41 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 			goto error;
 		query = NULL;
 		resp = NULL;
+#if defined(TIZEN_EXT_P2PS)
+	} else if (asp == 1) {
+		if(adv_id == 0 || svc_state > 0xff || config_methods == 0 || adv_str == NULL)
+			goto error;
+
+		if (wpas_p2p_service_p2ps_id_exists(wpa_s, adv_id)) {
+			if (!replace)
+				goto error;
+		} else {
+			if (replace)
+				goto error;
+		}
+
+		if(wpas_p2p_service_add_asp(wpa_s, auto_accept, adv_id, adv_str,
+				(u8) svc_state, (u16) config_methods,
+				svc_info))
+			goto error;
+#endif /* TIZEN_EXT_P2PS */
 	} else
 		goto error;
 
 	os_free(service);
+#if defined(TIZEN_EXT_P2PS)
+	os_free(adv_str);
+	os_free(svc_info);
+#endif /* TIZEN_EXT_P2PS */
 	return reply;
 error_clear:
 	wpa_dbus_dict_entry_clear(&entry);
 error:
 	os_free(service);
+#if defined(TIZEN_EXT_P2PS)
+	os_free(adv_str);
+	os_free(svc_info);
+#endif /* TIZEN_EXT_P2PS */
 	wpabuf_free(query);
 	wpabuf_free(resp);
 	return wpas_dbus_error_invalid_args(message, NULL);
@@ -2557,6 +2726,10 @@ DBusMessage * wpas_dbus_handler_p2p_delete_service(
 	char *service = NULL;
 	struct wpabuf *query = NULL;
 	u8 version = 0;
+#if defined(TIZEN_EXT_P2PS)
+	int asp = 0;
+	u32 adv_id = 0;
+#endif /* TIZEN_EXT_P2PS */
 
 	dbus_message_iter_init(message, &iter);
 
@@ -2573,6 +2746,10 @@ DBusMessage * wpas_dbus_handler_p2p_delete_service(
 				upnp = 1;
 			else if (os_strcmp(entry.str_value, "bonjour") == 0)
 				bonjour = 1;
+#if defined(TIZEN_EXT_P2PS)
+			else if (os_strcmp(entry.str_value, "asp") == 0)
+				asp = 1;
+#endif /* TIZEN_EXT_P2PS */
 			else
 				goto error_clear;
 			wpa_dbus_dict_entry_clear(&entry);
@@ -2626,6 +2803,26 @@ DBusMessage * wpas_dbus_handler_p2p_delete_service(
 		ret = wpas_p2p_service_del_bonjour(wpa_s, query);
 		if (ret != 0)
 			goto error;
+#if defined(TIZEN_EXT_P2PS)
+	} else if (asp == 1) {
+
+		while (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
+			if (!wpa_dbus_dict_get_entry(&iter_dict, &entry))
+				goto error;
+			if (os_strcmp(entry.key, "adv_id") == 0 &&
+					 entry.type == DBUS_TYPE_UINT32) {
+				adv_id = entry.uint32_value;
+			} else
+				goto error_clear;
+
+			wpa_dbus_dict_entry_clear(&entry);
+		}
+		if(adv_id == 0)
+			goto error;
+		ret = wpas_p2p_service_del_asp(wpa_s, adv_id);
+		if (ret != 0)
+			goto error;
+#endif /* TIZEN_EXT_P2PS */
 	} else
 		goto error;
 
@@ -2663,6 +2860,12 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 	u8 version = 0;
 	u64 ref = 0;
 	u8 addr_buf[ETH_ALEN], *addr;
+#if defined(TIZEN_EXT_P2PS)
+	int asp = 0;
+	u8 transaction_id = 0;
+	char *svc_str = NULL;
+	char *svc_info = NULL;
+#endif /* TIZEN_EXT_P2PS */
 
 	dbus_message_iter_init(message, &iter);
 
@@ -2679,6 +2882,10 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 			   entry.type == DBUS_TYPE_STRING) {
 			if (os_strcmp(entry.str_value, "upnp") == 0)
 				upnp = 1;
+#if defined(TIZEN_EXT_P2PS)
+			else if (os_strcmp(entry.str_value, "asp") == 0)
+				asp = 1;
+#endif /* TIZEN_EXT_P2PS */
 			else
 				goto error_clear;
 		} else if (os_strcmp(entry.key, "version") == 0 &&
@@ -2693,7 +2900,18 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 				goto error_clear;
 			tlv = wpabuf_alloc_copy(entry.bytearray_value,
 						entry.array_len);
-		} else
+#if defined(TIZEN_EXT_P2PS)
+		} else if (os_strcmp(entry.key, "transaction_id") == 0 &&
+				   entry.type == DBUS_TYPE_BYTE) {
+			transaction_id = entry.byte_value;
+		} else if (os_strcmp(entry.key, "svc_str") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			svc_str = os_strdup(entry.str_value);
+		} else if (os_strcmp(entry.key, "svc_info") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			svc_info = os_strdup(entry.str_value);
+#endif /* TIZEN_EXT_P2PS */
+		}  else
 			goto error_clear;
 
 		wpa_dbus_dict_entry_clear(&entry);
@@ -2714,6 +2932,13 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 			goto error;
 
 		ref = wpas_p2p_sd_request_upnp(wpa_s, addr, version, service);
+#if defined(TIZEN_EXT_P2PS)
+	} else if (asp == 1) {
+		if(transaction_id == 0 || svc_str == NULL)
+			goto error;
+		ref = wpas_p2p_sd_request_asp(wpa_s, addr, transaction_id,
+				svc_str, svc_info);
+#endif /* TIZEN_EXT_P2PS */
 	} else {
 		if (tlv == NULL)
 			goto error;
@@ -2730,6 +2955,10 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 			message, "Unable to send SD request");
 	}
 out:
+#if defined(TIZEN_EXT_P2PS)
+	os_free(svc_str);
+	os_free(svc_info);
+#endif /* TIZEN_EXT_P2PS */
 	os_free(service);
 	os_free(peer_object_path);
 	return reply;

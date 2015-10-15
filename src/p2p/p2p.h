@@ -20,6 +20,9 @@
 #define P2PS_WILD_HASH_STR "org.wi-fi.wfds"
 #define P2PS_HASH_LEN 6
 #define P2P_MAX_QUERY_HASH 6
+#if defined(TIZEN_EXT_P2PS)
+#define P2PS_MAX_SERV_NAME_LEN 255
+#endif /* TIZEN_EXT_P2PS */
 
 /**
  * P2P_MAX_REG_CLASSES - Maximum number of regulatory classes

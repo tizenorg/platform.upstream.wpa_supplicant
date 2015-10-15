@@ -600,7 +600,7 @@ static u8 p2ps_group_capability(void *ctx, u8 incoming, u8 role)
 	 */
 	go_wpa_s = wpas_p2p_get_go_group(wpa_s);
 	persistent_go = wpas_p2p_get_persistent_go(wpa_s);
-	p2p_no_group_iface = wpa_s->conf->p2p_no_group_iface;
+	p2p_no_group_iface = !wpas_p2p_create_iface(wpa_s);
 
 	wpa_printf(MSG_DEBUG, "P2P: GO(iface)=%p persistent(ssid)=%p",
 		   go_wpa_s, persistent_go);
@@ -749,7 +749,7 @@ grp_owner:
 		if (!s && !owner && p2p_no_group_iface) {
 			p2p_set_intended_addr(wpa_s->global->p2p,
 					      wpa_s->own_addr);
-		} else if (!s && !owner) {
+		} else if (!s && !owner && (conncap & P2PS_SETUP_GROUP_OWNER)) {
 			if (wpas_p2p_add_group_interface(wpa_s,
 							 WPA_IF_P2P_GO) < 0) {
 				wpa_printf(MSG_ERROR,
@@ -1257,10 +1257,10 @@ static void wpas_group_formation_completed(struct wpa_supplicant *wpa_s,
 	if (!success) {
 		wpa_msg_global(wpa_s->parent, MSG_INFO,
 			       P2P_EVENT_GROUP_FORMATION_FAILURE);
-		wpas_p2p_group_delete(wpa_s,
-				      P2P_GROUP_REMOVAL_FORMATION_FAILED);
 		wpa_printf(MSG_INFO, "dbus: Notify Group Formation Failure");
 		wpas_notify_p2p_group_formation_failure(wpa_s);
+		wpas_p2p_group_delete(wpa_s,
+				      P2P_GROUP_REMOVAL_FORMATION_FAILED);
 		return;
 	}
 
@@ -3237,12 +3237,22 @@ static void wpas_sd_p2ps_serv_response(struct wpa_supplicant *wpa_s,
 				       MAC2STR(sa), srv_trans_id, adv_id,
 				       svc_status, config_methods, svc_str,
 				       buf);
+#if defined(TIZEN_EXT_P2PS)
+			wpas_notify_p2p_sd_asp_response(wpa_s, sa,
+				       srv_trans_id, adv_id, svc_status, config_methods,
+				       svc_str, buf);
+#endif /* TIZEN_EXT_P2PS */
 			os_free(buf);
 		} else {
 			wpa_msg_global(wpa_s, MSG_INFO, P2P_EVENT_SERV_ASP_RESP
 				       MACSTR " %x %x %x %x %s",
 				       MAC2STR(sa), srv_trans_id, adv_id,
 				       svc_status, config_methods, svc_str);
+#if defined(TIZEN_EXT_P2PS)
+			wpas_notify_p2p_sd_asp_response(wpa_s, sa,
+					srv_trans_id, adv_id, svc_status, config_methods,
+				       svc_str, NULL);
+#endif /* TIZEN_EXT_P2PS */
 		}
 	}
 }
@@ -4843,6 +4853,7 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 				       MAC2STR(adv_mac),
 				       ses_id, MAC2STR(ses_mac),
 				       passwd_id);
+
 		} else {
 			wpa_msg_global(wpa_s, MSG_INFO,
 				       P2P_EVENT_P2PS_PROVISION_START MACSTR
@@ -4952,7 +4963,7 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 		if (!go_wpa_s) {
 			wpa_s->global->pending_p2ps_group = 1;
 
-			if (wpa_s->conf->p2p_no_group_iface)
+			if (!wpas_p2p_create_iface(wpa_s))
 				go_ifname = wpa_s->ifname;
 			else if (wpa_s->pending_interface_name[0])
 				go_ifname = wpa_s->pending_interface_name;
