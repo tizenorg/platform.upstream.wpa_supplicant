@@ -1257,10 +1257,10 @@ static void wpas_group_formation_completed(struct wpa_supplicant *wpa_s,
 	if (!success) {
 		wpa_msg_global(wpa_s->parent, MSG_INFO,
 			       P2P_EVENT_GROUP_FORMATION_FAILURE);
-		wpas_p2p_group_delete(wpa_s,
-				      P2P_GROUP_REMOVAL_FORMATION_FAILED);
 		wpa_printf(MSG_INFO, "dbus: Notify Group Formation Failure");
 		wpas_notify_p2p_group_formation_failure(wpa_s);
+		wpas_p2p_group_delete(wpa_s,
+				      P2P_GROUP_REMOVAL_FORMATION_FAILED);
 		return;
 	}
 

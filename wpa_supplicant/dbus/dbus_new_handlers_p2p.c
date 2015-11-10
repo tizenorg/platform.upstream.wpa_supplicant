@@ -1743,7 +1743,7 @@ dbus_bool_t wpas_dbus_getter_p2p_peer_groups(DBusMessageIter *iter,
 		wpa_s = wpa_s->p2p_dev;
 
 	wpa_s_go = wpas_get_p2p_client_iface(wpa_s, info->p2p_device_addr);
-	if (wpa_s_go) {
+	if (wpa_s_go && wpa_s_go->dbus_groupobj_path) {
 		data.paths = os_calloc(1, sizeof(char *));
 		if (data.paths == NULL)
 			goto out_of_memory;

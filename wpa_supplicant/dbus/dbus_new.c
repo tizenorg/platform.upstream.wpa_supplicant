@@ -1890,6 +1890,7 @@ void wpas_dbus_signal_p2p_group_formation_failure (
 
 	DBusMessage *msg;
 	struct wpas_dbus_priv *iface;
+	struct wpa_supplicant *parent;
 
 	iface = wpa_s->global->dbus;
 
@@ -1897,10 +1898,15 @@ void wpas_dbus_signal_p2p_group_formation_failure (
 	if (iface == NULL)
 		return;
 
-	if (wpa_s->p2p_mgmt)
-		wpa_s = wpa_s->parent;
+	parent = wpa_s->parent;
+	if (parent && parent->p2p_mgmt)
+		parent = parent->parent;
 
-	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+	/* Do nothing if the parent control interface is not turned on */
+	if(parent == NULL || parent->dbus_new_path == NULL)
+		return;
+
+	msg = dbus_message_new_signal(parent->dbus_new_path,
 				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
 				      "GroupFormationFailure");
 	if (msg == NULL)
