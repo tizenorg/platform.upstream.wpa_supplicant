@@ -40,6 +40,11 @@
 #include "radiotap_iter.h"
 #include "rfkill.h"
 #include "driver_nl80211.h"
+#if defined(TIZEN_WLAN_BOARD_SPRD)
+#include <sys/ioctl.h>
+#include "../ap/hostapd.h"
+#include "../ap/ap_config.h"
+#endif
 
 
 #ifndef CONFIG_LIBNL20
@@ -7439,6 +7444,95 @@ const u8 * wpa_driver_nl80211_get_macaddr(void *priv)
 	return bss->addr;
 }
 
+#if defined(TIZEN_WLAN_BOARD_SPRD)
+
+typedef struct {
+	char *buf;
+	int used_len;
+	int total_len;
+} tizen_wifi_priv_cmd;
+
+static int drv_errors = 0;
+
+static void wpa_driver_send_hang_msg(struct wpa_driver_nl80211_data *drv)
+{
+	drv_errors++;
+	if (drv_errors > 4) {
+		drv_errors = 0;
+		wpa_msg(drv->ctx, MSG_INFO, "Driver State : HANGED");
+	}
+}
+
+static int wpa_driver_nl80211_priv_cmd(struct i802_bss *bss, const char *cmd)
+{
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	struct ifreq ifr;
+	tizen_wifi_priv_cmd priv_cmd;
+	char buf[MAX_DRV_CMD_SIZE];
+	int ret = 0;
+
+	if (cmd)
+		wpa_printf(MSG_DEBUG, "%s = %s", __func__, cmd);
+	else
+		return -1;
+
+	os_memset(&ifr, 0, sizeof(ifr));
+	os_memset(&priv_cmd, 0, sizeof(priv_cmd));
+	os_strlcpy(ifr.ifr_name, bss->ifname, IFNAMSIZ);
+
+	os_memset(buf, 0, sizeof(buf));
+	os_strlcpy(buf, cmd, sizeof(buf));
+
+	priv_cmd.buf = buf;
+	priv_cmd.used_len = sizeof(buf);
+	priv_cmd.total_len = sizeof(buf);
+	ifr.ifr_data = &priv_cmd;
+
+	wpa_printf(MSG_DEBUG, "[KGB_DEBUG] %s: ioctl socket [%d], ifname [%s]",
+			__func__, drv->global->ioctl_sock, bss->ifname);
+
+	ret = ioctl(drv->global->ioctl_sock, SIOCDEVPRIVATE + 1, &ifr);
+	if (ret < 0) {
+		wpa_printf(MSG_ERROR, "%s: failed to issue private commands",
+			   __func__);
+		wpa_driver_send_hang_msg(drv);
+		return ret;
+	}
+
+	drv_errors = 0;
+	return 0;
+}
+
+int hostapd_send_conf_to_driver(struct hostapd_data *hapd)
+{
+	char buf[MAX_DRV_CMD_SIZE];
+	char *ssid = hapd->conf->ssid.ssid;
+	unsigned int ssid_len = hapd->conf->ssid.ssid_len;
+	unsigned int ignore_broadcast_ssid = hapd->conf->ignore_broadcast_ssid;
+
+	memset(buf, 0, sizeof(buf));
+	snprintf(buf, sizeof(buf), "HIDDEN_SSID 0x%02x 0x%02x %s",
+			ignore_broadcast_ssid, ssid_len, ssid);
+	return wpa_driver_nl80211_priv_cmd(hapd->drv_priv, buf);
+}
+
+int wpa_driver_nl80211_send_acl_to_driver(struct i802_bss *bss,
+			       u8 *mac_addr, u8 accept_acl)
+{
+	char buf[MAX_DRV_CMD_SIZE];
+
+	memset(buf, 0, sizeof(buf));
+	if(accept_acl)
+		snprintf(buf, sizeof(buf), "CMD_ADD_WHITELIST " MACSTR,
+				MAC2STR(mac_addr));
+	else
+		snprintf(buf, sizeof(buf), "BLOCK " MACSTR,
+				MAC2STR(mac_addr));
+
+	return wpa_driver_nl80211_priv_cmd(bss, buf);
+}
+#endif
+
 #ifdef BCM_DRIVER_V115
 
 #define MAX_WPSP2PIE_CMD_SIZE		384
@@ -7471,6 +7565,8 @@ int wpa_driver_nl80211_priv_cmd_bcm(void *priv, char *cmd, char *buf,
 
 	if (cmd)
 		wpa_printf(MSG_DEBUG, "%s = %s", __func__, cmd);
+	else
+		return -1;
 
 	os_memcpy(buf, cmd, strlen(cmd) + 1);
 

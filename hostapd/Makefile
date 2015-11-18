@@ -75,6 +75,9 @@ CFLAGS += -DTIZEN_EXT_SOFTAP
 ifdef CONFIG_BCM_DRIVER_V115
 CFLAGS += -DBCM_DRIVER_V115
 endif
+ifdef CONFIG_TIZEN_WLAN_BOARD_SPRD
+CFLAGS += -DTIZEN_WLAN_BOARD_SPRD
+endif
 CFLAGS += -I../src/drivers
 
 # To force sizeof(enum) = 4

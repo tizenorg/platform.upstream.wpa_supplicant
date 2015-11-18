@@ -22,7 +22,8 @@ start()
 
 stop()
 {
-	/usr/bin/killall wpa_supplicant
+	/usr/bin/pkill -x wpa_supplicant
+	/bin/usleep 150000
 }
 
 case $1 in
