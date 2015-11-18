@@ -227,6 +227,9 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
 		}
 		os_free(triggs);
 	}
+#if defined(TIZEN_WLAN_BOARD_SPRD)
+	hostapd_send_conf_to_driver(hapd);
+#endif
 
 	return 0;
 }

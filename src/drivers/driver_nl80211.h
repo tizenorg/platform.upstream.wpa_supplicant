@@ -274,4 +274,9 @@ int wpa_driver_nl80211_stop_sched_scan(void *priv);
 struct wpa_scan_results * wpa_driver_nl80211_get_scan_results(void *priv);
 void nl80211_dump_scan(struct wpa_driver_nl80211_data *drv);
 
+#if defined(TIZEN_WLAN_BOARD_SPRD)
+#define MAX_DRV_CMD_SIZE		248
+int hostapd_send_conf_to_driver(struct hostapd_data *hapd);
+#endif
+
 #endif /* DRIVER_NL80211_H */

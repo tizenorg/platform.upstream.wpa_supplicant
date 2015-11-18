@@ -1578,8 +1578,6 @@ void wpas_dbus_signal_p2p_peer_disconnected(struct wpa_supplicant *wpa_s,
 		parent = parent->parent;
 	if (!parent->dbus_new_path)
 		return;
-	if (!parent->dbus_new_path)
-		return;
 
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 			"%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/"

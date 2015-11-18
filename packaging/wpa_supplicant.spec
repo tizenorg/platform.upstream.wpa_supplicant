@@ -1,6 +1,6 @@
 Name:           wpa_supplicant
 Version:        2.4
-Release:        4
+Release:        5
 License:        BSD-3-Clause and GPL-2.0+
 Summary:        WPA supplicant implementation
 Url:            http://hostap.epitest.fi/wpa_supplicant/
@@ -26,6 +26,21 @@ IEEE 802.11 authentication/association of the wlan driver.
 %setup -q
 
 %build
+
+%if "%{?tizen_profile_name}" == "mobile"
+%if "%{?tizen_target_name}" == "Z130H"
+CONFIG_TIZEN_MOBILE=y; export CONFIG_TIZEN_MOBILE
+%else
+%if "%{?tizen_target_name}" == "Z300H"
+CONFIG_TIZEN_WLAN_BOARD_SPRD=y; export CONFIG_TIZEN_WLAN_BOARD_SPRD
+%else
+CONFIG_BCM_DRIVER_V115=y; export CONFIG_BCM_DRIVER_V115
+%endif
+%endif
+%else
+%if "%{?tizen_profile_name}" == "tv"
+%endif
+%endif
 
 cp %{SOURCE1001} .
 cp -v configurations/tizen.config wpa_supplicant/.config

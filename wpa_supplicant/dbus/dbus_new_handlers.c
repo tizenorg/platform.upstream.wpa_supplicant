@@ -582,6 +582,11 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 	if (ifname == NULL)
 		goto error; /* Required Ifname argument missing */
 
+#if defined TIZEN_WLAN_BOARD_SPRD
+	if (confname == NULL)
+		confname = os_strdup("/etc/wpa_supplicant/wpa_supplicant.conf");
+#endif /* TIZEN_WLAN_BOARD_SPRD */
+
 	/*
 	 * Try to get the wpa_supplicant record for this iface, return
 	 * an error if we already control it.

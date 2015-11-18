@@ -4143,6 +4143,9 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
 	if (wpa_s->max_remain_on_chan == 0)
 		wpa_s->max_remain_on_chan = 1000;
 
+#ifdef TIZEN_WLAN_BOARD_SPRD
+	wpa_s->drv_flags &= ~WPA_DRIVER_FLAGS_DEDICATED_P2P_DEVICE;
+#endif /* TIZEN_WLAN_BOARD_SPRD */
 	/*
 	 * Only take p2p_mgmt parameters when P2P Device is supported.
 	 * Doing it here as it determines whether l2_packet_init() will be done
@@ -4200,7 +4203,12 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
 		return -1;
 	}
 
+#ifdef TIZEN_WLAN_BOARD_SPRD
+	if (iface->p2p_mgmt && strncmp(wpa_s->ifname, "wlan", 4) &&
+			wpas_p2p_init(wpa_s->global, wpa_s) < 0) {
+#else /* TIZEN_WLAN_BOARD_SPRD */
 	if (iface->p2p_mgmt && wpas_p2p_init(wpa_s->global, wpa_s) < 0) {
+#endif /* TIZEN_WLAN_BOARD_SPRD */
 		wpa_msg(wpa_s, MSG_ERROR, "Failed to init P2P");
 		return -1;
 	}
