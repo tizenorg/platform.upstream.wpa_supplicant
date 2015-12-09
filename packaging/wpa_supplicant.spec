@@ -27,7 +27,7 @@ IEEE 802.11 authentication/association of the wlan driver.
 
 %build
 
-%if "%{?tizen_profile_name}" == "mobile"
+%if "%{?profile}" == "mobile"
 %if "%{?tizen_target_name}" == "Z130H"
 CONFIG_TIZEN_MOBILE=y; export CONFIG_TIZEN_MOBILE
 %else
@@ -38,7 +38,7 @@ CONFIG_BCM_DRIVER_V115=y; export CONFIG_BCM_DRIVER_V115
 %endif
 %endif
 %else
-%if "%{?tizen_profile_name}" == "tv"
+%if "%{?profile}" == "tv"
 %endif
 %endif
 
