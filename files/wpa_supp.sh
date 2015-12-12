@@ -14,8 +14,12 @@ start()
 		"SLP10_C210")	/bin/echo "This is C210"
 			/usr/sbin/wpa_supplicant -u -t -B -d -Dwext -f/opt/usr/data/network/wpa_supplicant.log
 		;;
+
+		"Samsung")/bin/echo "This is Tizen TV"
+			/usr/sbin/wpa_supplicant -u -t -B -dd -O /var/run/wpa_supplicant -g/var/run/wpa_global -f/var/log/wpa_supplicant.log
+		;;
 		*)
-			/usr/sbin/wpa_supplicant -u -t -B -ddd -K -f/opt/usr/data/network/wpa_supplicant.log
+			/usr/sbin/wpa_supplicant -u -t -B -dd -O /var/run/wpa_supplicant -g/var/run/wpa_global -f/var/log/wpa_supplicant.log
 		;;
 	esac
 }

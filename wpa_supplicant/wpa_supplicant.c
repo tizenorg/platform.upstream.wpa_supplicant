@@ -4143,9 +4143,10 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
 	if (wpa_s->max_remain_on_chan == 0)
 		wpa_s->max_remain_on_chan = 1000;
 
-#ifdef TIZEN_WLAN_BOARD_SPRD
+#if defined(TIZEN_WLAN_BOARD_SPRD) || defined(TIZEN_TV_BOARD_PRD)
+	wpa_dbg(wpa_s, MSG_DEBUG, "Ignore Dedicated P2P Device Flag");
 	wpa_s->drv_flags &= ~WPA_DRIVER_FLAGS_DEDICATED_P2P_DEVICE;
-#endif /* TIZEN_WLAN_BOARD_SPRD */
+#endif /* TIZEN_WLAN_BOARD_SPRD || TIZEN_TV_BOARD_PRD */
 	/*
 	 * Only take p2p_mgmt parameters when P2P Device is supported.
 	 * Doing it here as it determines whether l2_packet_init() will be done
