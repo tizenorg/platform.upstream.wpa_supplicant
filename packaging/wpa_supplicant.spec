@@ -107,3 +107,4 @@ rm -rf %{buildroot}%{_sbindir}/wpa_passphrase
 %{_defaultdocdir}/wpasupplicant/README.wpa_supplicant.*
 #%{_libdir}/systemd/system/wpa_supplicant.service
 #%{_libdir}/systemd/system/network.target.wants/wpa_supplicant.service
+%doc COPYING.mbsd
