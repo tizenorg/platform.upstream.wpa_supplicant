@@ -1,6 +1,6 @@
 Name:           wpa_supplicant
 Version:        2.4
-Release:        6
+Release:        7
 License:        BSD-2.0 and GPL-2.0+
 Summary:        WPA supplicant implementation
 Url:            http://hostap.epitest.fi/wpa_supplicant/
@@ -65,6 +65,10 @@ mkdir -p %{buildroot}%{_sysconfdir}/wpa_supplicant/
 cp -v wpa_supplicant/wpa_supplicant.conf %{buildroot}%{_sysconfdir}/wpa_supplicant/wpa_supplicant.conf
 cp -v hostapd/hostapd.conf %{buildroot}%{_sysconfdir}/wpa_supplicant/hostapd.conf
 
+# hostapd whilte/block list for MAC filtering
+cp -v hostapd/hostapd.accept %{buildroot}%{_sysconfdir}/hostapd.accept
+cp -v hostapd/hostapd.deny %{buildroot}%{_sysconfdir}/hostapd.deny
+
 # D-Bus
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d/
 cp wpa_supplicant/dbus/dbus-wpa_supplicant.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/wpa_supplicant.conf
@@ -99,6 +103,8 @@ rm -rf %{buildroot}%{_sbindir}/wpa_passphrase
 %{_sbindir}/wpa_supplicant
 %{_sbindir}/hostapd
 %{_sbindir}/hostapd_cli
+%{_sysconfdir}/hostapd.accept
+%{_sysconfdir}/hostapd.deny
 %attr(500,root,root) %{_sbindir}/wpa_supp.sh
 %attr(644,-,-) %{_sysconfdir}/dbus-1/system.d/*.conf
 #%attr(644,-,-) %{_datadir}/dbus-1/services/*.service
