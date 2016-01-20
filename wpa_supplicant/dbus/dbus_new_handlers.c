@@ -158,7 +158,7 @@ static struct wpa_supplicant * get_iface_by_dbus_path(
 
 	for (wpa_s = global->ifaces; wpa_s; wpa_s = wpa_s->next) {
 		if (wpa_s->dbus_new_path &&
-			    os_strcmp(wpa_s->dbus_new_path, path) == 0)
+		    os_strcmp(wpa_s->dbus_new_path, path) == 0)
 			return wpa_s;
 	}
 	return NULL;
@@ -214,7 +214,7 @@ dbus_bool_t set_network_properties(struct wpa_supplicant *wpa_s,
 		} else if (entry.type == DBUS_TYPE_STRING) {
 			if (should_quote_opt(entry.key)) {
 				size = os_strlen(entry.str_value);
-				if (size <= 0)
+				if (size == 0)
 					goto error;
 
 				size += 3;
@@ -657,7 +657,7 @@ DBusMessage * wpas_dbus_handler_remove_interface(DBusMessage *message,
 			      DBUS_TYPE_INVALID);
 
 	wpa_s = get_iface_by_dbus_path(global, path);
-	if (wpa_s == NULL || wpa_s->dbus_new_path == NULL)
+	if (wpa_s == NULL)
 		reply = wpas_dbus_error_iface_unknown(message);
 	else if (wpa_supplicant_remove_iface(global, wpa_s, 0)) {
 		reply = wpas_dbus_error_unknown_error(
@@ -1044,10 +1044,10 @@ static int wpas_dbus_get_scan_ssids(DBusMessage *message, DBusMessageIter *var,
 
 		dbus_message_iter_get_fixed_array(&sub_array_iter, &val, &len);
 
-		if (len > MAX_SSID_LEN) {
+		if (len > SSID_MAX_LEN) {
 			wpa_printf(MSG_DEBUG,
 				   "%s[dbus]: SSID too long (len=%d max_len=%d)",
-				   __func__, len, MAX_SSID_LEN);
+				   __func__, len, SSID_MAX_LEN);
 			*reply = wpas_dbus_error_invalid_args(
 				message, "Invalid SSID: too long");
 			return -1;
@@ -1337,14 +1337,26 @@ DBusMessage * wpas_dbus_handler_scan(DBusMessage *message,
 				message,
 				"You can specify only Channels in passive scan");
 			goto out;
-		} else if (params.freqs && params.freqs[0]) {
-			if (wpa_supplicant_trigger_scan(wpa_s, &params)) {
-				reply = wpas_dbus_error_scan_error(
-					message, "Scan request rejected");
-			}
 		} else {
-			wpa_s->scan_req = MANUAL_SCAN_REQ;
-			wpa_supplicant_req_scan(wpa_s, 0, 0);
+			if (wpa_s->sched_scanning) {
+				wpa_printf(MSG_DEBUG,
+					   "%s[dbus]: Stop ongoing sched_scan to allow requested scan to proceed",
+					   __func__);
+				wpa_supplicant_cancel_sched_scan(wpa_s);
+			}
+
+			if (params.freqs && params.freqs[0]) {
+				wpa_s->last_scan_req = MANUAL_SCAN_REQ;
+				if (wpa_supplicant_trigger_scan(wpa_s,
+								&params)) {
+					reply = wpas_dbus_error_scan_error(
+						message,
+						"Scan request rejected");
+				}
+			} else {
+				wpa_s->scan_req = MANUAL_SCAN_REQ;
+				wpa_supplicant_req_scan(wpa_s, 0, 0);
+			}
 		}
 	} else if (os_strcmp(type, "active") == 0) {
 		if (!params.num_ssids) {
@@ -1354,6 +1366,14 @@ DBusMessage * wpas_dbus_handler_scan(DBusMessage *message,
 #ifdef CONFIG_AUTOSCAN
 		autoscan_deinit(wpa_s);
 #endif /* CONFIG_AUTOSCAN */
+		if (wpa_s->sched_scanning) {
+			wpa_printf(MSG_DEBUG,
+				   "%s[dbus]: Stop ongoing sched_scan to allow requested scan to proceed",
+				   __func__);
+			wpa_supplicant_cancel_sched_scan(wpa_s);
+		}
+
+		wpa_s->last_scan_req = MANUAL_SCAN_REQ;
 		if (wpa_supplicant_trigger_scan(wpa_s, &params)) {
 			reply = wpas_dbus_error_scan_error(
 				message, "Scan request rejected");
@@ -1584,6 +1604,30 @@ DBusMessage * wpas_dbus_handler_reattach(DBusMessage *message,
 
 	return dbus_message_new_error(message, WPAS_DBUS_ERROR_NOT_CONNECTED,
 				      "This interface is not connected");
+}
+
+
+/**
+ * wpas_dbus_handler_reconnect - Reconnect if disconnected
+ * @message: Pointer to incoming dbus message
+ * @wpa_s: wpa_supplicant structure for a network interface
+ * Returns: InterfaceDisabled DBus error message if disabled
+ * or NULL otherwise.
+ *
+ * Handler function for "Reconnect" method call of network interface.
+ */
+DBusMessage * wpas_dbus_handler_reconnect(DBusMessage *message,
+		struct wpa_supplicant *wpa_s)
+{
+	if (wpa_s->wpa_state == WPA_INTERFACE_DISABLED) {
+		return dbus_message_new_error(message,
+					      WPAS_DBUS_ERROR_IFACE_DISABLED,
+					      "This interface is disabled");
+	}
+
+	if (wpa_s->disconnected)
+		wpas_request_connection(wpa_s);
+	return NULL;
 }
 
 
@@ -3816,6 +3860,7 @@ dbus_bool_t wpas_dbus_getter_bss_wps(DBusMessageIter *iter, DBusError *error,
 	struct wpabuf *wps_ie;
 #endif /* CONFIG_WPS */
 	DBusMessageIter iter_dict, variant_iter;
+	int wps_support = 0;
 	const char *type = "";
 
 	res = get_bss_helper(args, error, __func__);
@@ -3830,6 +3875,7 @@ dbus_bool_t wpas_dbus_getter_bss_wps(DBusMessageIter *iter, DBusError *error,
 #ifdef CONFIG_WPS
 	wps_ie = wpa_bss_get_vendor_ie_multi(res, WPS_IE_VENDOR_TYPE);
 	if (wps_ie) {
+		wps_support = 1;
 		if (wps_is_selected_pbc_registrar(wps_ie))
 			type = "pbc";
 		else if (wps_is_selected_pin_registrar(wps_ie))
@@ -3839,7 +3885,7 @@ dbus_bool_t wpas_dbus_getter_bss_wps(DBusMessageIter *iter, DBusError *error,
 	}
 #endif /* CONFIG_WPS */
 
-	if (!wpa_dbus_dict_append_string(&iter_dict, "Type", type) ||
+	if ((wps_support && !wpa_dbus_dict_append_string(&iter_dict, "Type", type)) ||
 	    !wpa_dbus_dict_close_write(&variant_iter, &iter_dict) ||
 	    !dbus_message_iter_close_container(iter, &variant_iter))
 		goto nomem;
