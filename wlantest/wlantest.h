@@ -151,6 +151,10 @@ struct wlantest_bss {
 	u8 ipn[6][6];
 	u32 counters[NUM_WLANTEST_BSS_COUNTER];
 	struct dl_list tdls; /* struct wlantest_tdls */
+	u8 mdid[2];
+	u8 r0kh_id[FT_R0KH_ID_MAX_LEN];
+	size_t r0kh_id_len;
+	u8 r1kh_id[FT_R1KH_ID_LEN];
 };
 
 struct wlantest_radius {
@@ -291,9 +295,9 @@ u8 * bip_gmac_protect(const u8 *igtk, size_t igtk_len, u8 *frame, size_t len,
 
 u8 * gcmp_decrypt(const u8 *tk, size_t tk_len, const struct ieee80211_hdr *hdr,
 		  const u8 *data, size_t data_len, size_t *decrypted_len);
-u8 * gcmp_encrypt(const u8 *tk, size_t tk_len, u8 *frame, size_t len,
-		  size_t hdrlen, u8 *qos,
-		  u8 *pn, int keyid, size_t *encrypted_len);
+u8 * gcmp_encrypt(const u8 *tk, size_t tk_len, const u8 *frame, size_t len,
+		  size_t hdrlen, const u8 *qos,
+		  const u8 *pn, int keyid, size_t *encrypted_len);
 
 int ctrl_init(struct wlantest *wt);
 void ctrl_deinit(struct wlantest *wt);

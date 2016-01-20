@@ -983,6 +983,7 @@ static int interworking_connect_3gpp(struct wpa_supplicant *wpa_s,
 	if (ssid == NULL)
 		return -1;
 	ssid->parent_cred = cred;
+
 	wpas_notify_network_added(wpa_s, ssid);
 	wpa_config_set_network_defaults(ssid);
 	ssid->priority = cred->priority;
@@ -2063,7 +2064,7 @@ static struct wpa_cred * interworking_credentials_available_helper(
 	int *excluded)
 {
 	struct wpa_cred *cred, *cred2;
-	int excluded1, excluded2;
+	int excluded1, excluded2 = 0;
 
 	if (disallowed_bssid(wpa_s, bss->bssid) ||
 	    disallowed_ssid(wpa_s, bss->ssid, bss->ssid_len)) {
@@ -2678,14 +2679,16 @@ int anqp_send_req(struct wpa_supplicant *wpa_s, const u8 *dst,
 	struct wpa_bss *bss;
 	int res;
 
-	freq = wpa_s->assoc_freq;
 	bss = wpa_bss_get_bssid(wpa_s, dst);
-	if (bss) {
-		wpa_bss_anqp_unshare_alloc(bss);
-		freq = bss->freq;
-	}
-	if (freq <= 0)
+	if (!bss) {
+		wpa_printf(MSG_WARNING,
+			   "ANQP: Cannot send query to unknown BSS "
+			   MACSTR, MAC2STR(dst));
 		return -1;
+	}
+
+	wpa_bss_anqp_unshare_alloc(bss);
+	freq = bss->freq;
 
 	wpa_msg(wpa_s, MSG_DEBUG,
 		"ANQP: Query Request to " MACSTR " for %u id(s)",
