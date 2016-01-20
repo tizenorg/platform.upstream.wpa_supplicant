@@ -53,16 +53,19 @@ static void rx_mgmt_beacon(struct wlantest *wt, const u8 *data, size_t len)
 	const struct ieee80211_mgmt *mgmt;
 	struct wlantest_bss *bss;
 	struct ieee802_11_elems elems;
+	size_t offset;
 
 	mgmt = (const struct ieee80211_mgmt *) data;
+	offset = mgmt->u.beacon.variable - data;
+	if (len < offset)
+		return;
 	bss = bss_get(wt, mgmt->bssid);
 	if (bss == NULL)
 		return;
 	if (bss->proberesp_seen)
 		return; /* do not override with Beacon data */
 	bss->capab_info = le_to_host16(mgmt->u.beacon.capab_info);
-	if (ieee802_11_parse_elems(mgmt->u.beacon.variable,
-				   len - (mgmt->u.beacon.variable - data),
+	if (ieee802_11_parse_elems(mgmt->u.beacon.variable, len - offset,
 				   &elems, 0) == ParseFailed) {
 		if (bss->parse_error_reported)
 			return;
@@ -81,16 +84,19 @@ static void rx_mgmt_probe_resp(struct wlantest *wt, const u8 *data, size_t len)
 	const struct ieee80211_mgmt *mgmt;
 	struct wlantest_bss *bss;
 	struct ieee802_11_elems elems;
+	size_t offset;
 
 	mgmt = (const struct ieee80211_mgmt *) data;
+	offset = mgmt->u.probe_resp.variable - data;
+	if (len < offset)
+		return;
 	bss = bss_get(wt, mgmt->bssid);
 	if (bss == NULL)
 		return;
 
 	bss->counters[WLANTEST_BSS_COUNTER_PROBE_RESPONSE]++;
 	bss->capab_info = le_to_host16(mgmt->u.probe_resp.capab_info);
-	if (ieee802_11_parse_elems(mgmt->u.probe_resp.variable,
-				   len - (mgmt->u.probe_resp.variable - data),
+	if (ieee802_11_parse_elems(mgmt->u.probe_resp.variable, len - offset,
 				   &elems, 0) == ParseFailed) {
 		if (bss->parse_error_reported)
 			return;
@@ -308,6 +314,9 @@ static void rx_mgmt_assoc_resp(struct wlantest *wt, const u8 *data, size_t len)
 	struct wlantest_bss *bss;
 	struct wlantest_sta *sta;
 	u16 capab, status, aid;
+	const u8 *ies;
+	size_t ies_len;
+	struct wpa_ft_ies parse;
 
 	mgmt = (const struct ieee80211_mgmt *) data;
 	bss = bss_get(wt, mgmt->bssid);
@@ -323,6 +332,9 @@ static void rx_mgmt_assoc_resp(struct wlantest *wt, const u8 *data, size_t len)
 		return;
 	}
 
+	ies = mgmt->u.assoc_resp.variable;
+	ies_len = len - (mgmt->u.assoc_resp.variable - data);
+
 	capab = le_to_host16(mgmt->u.assoc_resp.capab_info);
 	status = le_to_host16(mgmt->u.assoc_resp.status_code);
 	aid = le_to_host16(mgmt->u.assoc_resp.aid);
@@ -334,15 +346,12 @@ static void rx_mgmt_assoc_resp(struct wlantest *wt, const u8 *data, size_t len)
 
 	if (status == WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY) {
 		struct ieee802_11_elems elems;
-		const u8 *ies = mgmt->u.assoc_resp.variable;
-		size_t ies_len = len - (mgmt->u.assoc_resp.variable - data);
 		if (ieee802_11_parse_elems(ies, ies_len, &elems, 0) ==
 		    ParseFailed) {
 			add_note(wt, MSG_INFO, "Failed to parse IEs in "
 				 "AssocResp from " MACSTR,
 				 MAC2STR(mgmt->sa));
 		} else if (elems.timeout_int == NULL ||
-			   elems.timeout_int_len != 5 ||
 			   elems.timeout_int[0] !=
 			   WLAN_TIMEOUT_ASSOC_COMEBACK) {
 			add_note(wt, MSG_INFO, "No valid Timeout Interval IE "
@@ -376,6 +385,16 @@ static void rx_mgmt_assoc_resp(struct wlantest *wt, const u8 *data, size_t len)
 			 " moved to State 3 with " MACSTR,
 			 MAC2STR(sta->addr), MAC2STR(bss->bssid));
 		sta->state = STATE3;
+	}
+
+	if (wpa_ft_parse_ies(ies, ies_len, &parse) == 0) {
+		if (parse.r0kh_id) {
+			os_memcpy(bss->r0kh_id, parse.r0kh_id,
+				  parse.r0kh_id_len);
+			bss->r0kh_id_len = parse.r0kh_id_len;
+		}
+		if (parse.r1kh_id)
+			os_memcpy(bss->r1kh_id, parse.r1kh_id, FT_R1KH_ID_LEN);
 	}
 }
 
@@ -475,7 +494,6 @@ static void rx_mgmt_reassoc_resp(struct wlantest *wt, const u8 *data,
 				 "ReassocResp from " MACSTR,
 				 MAC2STR(mgmt->sa));
 		} else if (elems.timeout_int == NULL ||
-			   elems.timeout_int_len != 5 ||
 			   elems.timeout_int[0] !=
 			   WLAN_TIMEOUT_ASSOC_COMEBACK) {
 			add_note(wt, MSG_INFO, "No valid Timeout Interval IE "

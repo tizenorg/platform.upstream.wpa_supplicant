@@ -335,6 +335,33 @@ static void wiphy_info_tdls(struct wpa_driver_capa *capa, struct nlattr *tdls,
 }
 
 
+static int ext_feature_isset(const u8 *ext_features, int ext_features_len,
+			     enum nl80211_ext_feature_index ftidx)
+{
+	u8 ft_byte;
+
+	if ((int) ftidx / 8 >= ext_features_len)
+		return 0;
+
+	ft_byte = ext_features[ftidx / 8];
+	return (ft_byte & BIT(ftidx % 8)) != 0;
+}
+
+
+static void wiphy_info_ext_feature_flags(struct wiphy_info_data *info,
+					 struct nlattr *tb)
+{
+	struct wpa_driver_capa *capa = info->capa;
+
+	if (tb == NULL)
+		return;
+
+	if (ext_feature_isset(nla_data(tb), nla_len(tb),
+			      NL80211_EXT_FEATURE_VHT_IBSS))
+		capa->flags |= WPA_DRIVER_FLAGS_VHT_IBSS;
+}
+
+
 static void wiphy_info_feature_flags(struct wiphy_info_data *info,
 				     struct nlattr *tb)
 {
@@ -509,6 +536,7 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 		info->device_ap_sme = 1;
 
 	wiphy_info_feature_flags(info, tb[NL80211_ATTR_FEATURE_FLAGS]);
+	wiphy_info_ext_feature_flags(info, tb[NL80211_ATTR_EXT_FEATURES]);
 	wiphy_info_probe_resp_offload(capa,
 				      tb[NL80211_ATTR_PROBE_RESP_OFFLOAD]);
 
@@ -547,22 +575,34 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 				continue;
 			}
 			vinfo = nla_data(nl);
-			switch (vinfo->subcmd) {
-			case QCA_NL80211_VENDOR_SUBCMD_TEST:
-				drv->vendor_cmd_test_avail = 1;
-				break;
-			case QCA_NL80211_VENDOR_SUBCMD_ROAMING:
-				drv->roaming_vendor_cmd_avail = 1;
-				break;
-			case QCA_NL80211_VENDOR_SUBCMD_DFS_CAPABILITY:
-				drv->dfs_vendor_cmd_avail = 1;
-				break;
-			case QCA_NL80211_VENDOR_SUBCMD_GET_FEATURES:
-				drv->get_features_vendor_cmd_avail = 1;
-				break;
-			case QCA_NL80211_VENDOR_SUBCMD_DO_ACS:
-				drv->capa.flags |= WPA_DRIVER_FLAGS_ACS_OFFLOAD;
-				break;
+			if (vinfo->vendor_id == OUI_QCA) {
+				switch (vinfo->subcmd) {
+				case QCA_NL80211_VENDOR_SUBCMD_TEST:
+					drv->vendor_cmd_test_avail = 1;
+					break;
+				case QCA_NL80211_VENDOR_SUBCMD_ROAMING:
+					drv->roaming_vendor_cmd_avail = 1;
+					break;
+				case QCA_NL80211_VENDOR_SUBCMD_DFS_CAPABILITY:
+					drv->dfs_vendor_cmd_avail = 1;
+					break;
+				case QCA_NL80211_VENDOR_SUBCMD_GET_FEATURES:
+					drv->get_features_vendor_cmd_avail = 1;
+					break;
+				case QCA_NL80211_VENDOR_SUBCMD_GET_PREFERRED_FREQ_LIST:
+					drv->get_pref_freq_list = 1;
+					break;
+				case QCA_NL80211_VENDOR_SUBCMD_SET_PROBABLE_OPER_CHANNEL:
+					drv->set_prob_oper_freq = 1;
+					break;
+				case QCA_NL80211_VENDOR_SUBCMD_DO_ACS:
+					drv->capa.flags |=
+						WPA_DRIVER_FLAGS_ACS_OFFLOAD;
+					break;
+				case QCA_NL80211_VENDOR_SUBCMD_SETBAND:
+					drv->setband_vendor_cmd_avail = 1;
+					break;
+				}
 			}
 
 			wpa_printf(MSG_DEBUG, "nl80211: Supported vendor command: vendor_id=0x%x subcmd=%u",
@@ -648,9 +688,7 @@ static int wpa_driver_nl80211_get_info(struct wpa_driver_nl80211_data *drv,
 	/* default to 5000 since early versions of mac80211 don't set it */
 	if (!drv->capa.max_remain_on_chan)
 		drv->capa.max_remain_on_chan = 5000;
-#ifdef BCM_DRIVER_V115
-	info->device_ap_sme = 1;
-#endif
+
 	if (info->channel_switch_supported)
 		drv->capa.flags |= WPA_DRIVER_FLAGS_AP_CSA;
 	drv->capa.wmm_ac_supported = info->wmm_ac_supported;
@@ -719,6 +757,7 @@ static void qca_nl80211_check_dfs_capa(struct wpa_driver_nl80211_data *drv)
 struct features_info {
 	u8 *flags;
 	size_t flags_len;
+	struct wpa_driver_capa *capa;
 };
 
 
@@ -744,6 +783,19 @@ static int features_info_handler(struct nl_msg *msg, void *arg)
 			info->flags = nla_data(attr);
 			info->flags_len = nla_len(attr);
 		}
+		attr = tb_vendor[QCA_WLAN_VENDOR_ATTR_CONCURRENCY_CAPA];
+		if (attr)
+			info->capa->conc_capab = nla_get_u32(attr);
+
+		attr = tb_vendor[
+			QCA_WLAN_VENDOR_ATTR_MAX_CONCURRENT_CHANNELS_2_4_BAND];
+		if (attr)
+			info->capa->max_conc_chan_2_4 = nla_get_u32(attr);
+
+		attr = tb_vendor[
+			QCA_WLAN_VENDOR_ATTR_MAX_CONCURRENT_CHANNELS_5_0_BAND];
+		if (attr)
+			info->capa->max_conc_chan_5_0 = nla_get_u32(attr);
 	}
 
 	return NL_SKIP;
@@ -778,12 +830,16 @@ static void qca_nl80211_get_features(struct wpa_driver_nl80211_data *drv)
 	}
 
 	os_memset(&info, 0, sizeof(info));
+	info.capa = &drv->capa;
 	ret = send_and_recv_msgs(drv, msg, features_info_handler, &info);
 	if (ret || !info.flags)
 		return;
 
 	if (check_feature(QCA_WLAN_VENDOR_FEATURE_KEY_MGMT_OFFLOAD, &info))
 		drv->capa.flags |= WPA_DRIVER_FLAGS_KEY_MGMT_OFFLOAD;
+
+	if (check_feature(QCA_WLAN_VENDOR_FEATURE_SUPPORT_HW_MODE_ANY, &info))
+		drv->capa.flags |= WPA_DRIVER_FLAGS_SUPPORT_HW_MODE_ANY;
 }
 
 
@@ -842,11 +898,7 @@ int wpa_driver_nl80211_capa(struct wpa_driver_nl80211_data *drv)
 	 * If poll command and tx status are supported, mac80211 is new enough
 	 * to have everything we need to not need monitor interfaces.
 	 */
-#ifdef BCM_DRIVER_V115
-	drv->use_monitor = 0;
-#else
 	drv->use_monitor = !info.poll_command_supported || !info.data_tx_status;
-#endif
 
 	if (drv->device_ap_sme && drv->use_monitor) {
 		/*

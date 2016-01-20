@@ -79,12 +79,18 @@ def test_discovery(dev):
         raise Exception("P2P_FIND with invalid dev_id accepted")
     if "FAIL" not in dev[0].p2p_find(dev_type="foo"):
         raise Exception("P2P_FIND with invalid dev_type accepted")
+    if "FAIL" not in dev[0].p2p_find(dev_type="1-foo-2"):
+        raise Exception("P2P_FIND with invalid dev_type accepted")
+    if "FAIL" not in dev[0].p2p_find(dev_type="1-11223344"):
+        raise Exception("P2P_FIND with invalid dev_type accepted")
 
     if "FAIL" not in dev[0].global_request("P2P_PROV_DISC foo pbc"):
         raise Exception("Invalid P2P_PROV_DISC accepted")
     if "FAIL" not in dev[0].global_request("P2P_PROV_DISC 00:11:22:33:44:55"):
         raise Exception("Invalid P2P_PROV_DISC accepted")
     if "FAIL" not in dev[0].global_request("P2P_PROV_DISC 00:11:22:33:44:55 pbc join"):
+        raise Exception("Invalid P2P_PROV_DISC accepted")
+    if "FAIL" not in dev[0].global_request("P2P_PROV_DISC 00:11:22:33:44:55 foo"):
         raise Exception("Invalid P2P_PROV_DISC accepted")
 
 def test_discovery_pd_retries(dev):
@@ -97,7 +103,7 @@ def test_discovery_pd_retries(dev):
     dev[1].p2p_stop_find()
     dev[0].p2p_stop_find()
     dev[0].global_request("P2P_PROV_DISC " + addr1 + " display")
-    ev = dev[0].wait_event(["P2P-PROV-DISC-FAILURE"], timeout=60)
+    ev = dev[0].wait_global_event(["P2P-PROV-DISC-FAILURE"], timeout=60)
     if ev is None:
         raise Exception("No PD failure reported")
 
@@ -130,19 +136,22 @@ def test_discovery_group_client(dev):
     # make group client non-responsive on operating channel
     dev[1].dump_monitor()
     dev[1].group_request("DISCONNECT")
-    dev[1].wait_disconnected(timeout=10)
+    ev = dev[1].wait_group_event(["CTRL-EVENT-DISCONNECTED"], timeout=10)
+    if ev is None:
+        raise Exception("Timeout on waiting disconnection")
     dev[2].request("P2P_CONNECT {} {} display".format(dev[1].p2p_dev_addr(),
                                                       pin))
-    ev = dev[1].wait_event(["P2P-GO-NEG-REQUEST"], timeout=2)
+    ev = dev[1].wait_global_event(["P2P-GO-NEG-REQUEST"], timeout=2)
     if ev:
         raise Exception("Unexpected frame RX on P2P client")
     # make group client available on operating channe
-    dev[1].request("REASSOCIATE")
-    ev = dev[1].wait_event(["CTRL-EVENT-CONNECTED", "P2P-GO-NEG-REQUEST"])
+    dev[1].group_request("REASSOCIATE")
+    ev = dev[1].wait_global_event(["CTRL-EVENT-CONNECTED",
+                                   "P2P-GO-NEG-REQUEST"], timeout=10)
     if ev is None:
         raise Exception("Timeout on reconnection to group")
     if "P2P-GO-NEG-REQUEST" not in ev:
-        ev = dev[1].wait_event(["P2P-GO-NEG-REQUEST"])
+        ev = dev[1].wait_global_event(["P2P-GO-NEG-REQUEST"], timeout=10)
         if ev is None:
             raise Exception("Timeout on waiting for GO Negotiation Request")
 
@@ -151,11 +160,11 @@ def test_discovery_dev_type(dev):
     dev[1].request("SET sec_device_type 1-0050F204-2")
     dev[1].p2p_listen()
     dev[0].p2p_find(social=True, dev_type="5-0050F204-1")
-    ev = dev[0].wait_event(['P2P-DEVICE-FOUND'], timeout=1)
+    ev = dev[0].wait_global_event(['P2P-DEVICE-FOUND'], timeout=1)
     if ev:
         raise Exception("Unexpected P2P device found")
     dev[0].p2p_find(social=True, dev_type="1-0050F204-2")
-    ev = dev[0].wait_event(['P2P-DEVICE-FOUND'], timeout=2)
+    ev = dev[0].wait_global_event(['P2P-DEVICE-FOUND'], timeout=2)
     if ev is None:
         raise Exception("P2P device not found")
     peer = dev[0].get_peer(dev[1].p2p_dev_addr())
@@ -172,11 +181,11 @@ def test_discovery_dev_type_go(dev):
     dev[1].p2p_connect_group(dev[0].p2p_dev_addr(), pin, timeout=60)
 
     dev[2].p2p_find(social=True, dev_type="5-0050F204-1")
-    ev = dev[2].wait_event(['P2P-DEVICE-FOUND'], timeout=1)
+    ev = dev[2].wait_global_event(['P2P-DEVICE-FOUND'], timeout=1)
     if ev:
         raise Exception("Unexpected P2P device found")
     dev[2].p2p_find(social=True, dev_type="1-0050F204-2")
-    ev = dev[2].wait_event(['P2P-DEVICE-FOUND ' + addr1], timeout=2)
+    ev = dev[2].wait_global_event(['P2P-DEVICE-FOUND ' + addr1], timeout=2)
     if ev is None:
         raise Exception("P2P device not found")
 
@@ -191,11 +200,11 @@ def test_discovery_dev_id(dev):
     addr1 = dev[1].p2p_dev_addr()
     dev[1].p2p_listen()
     dev[0].p2p_find(social=True, dev_id="02:03:04:05:06:07")
-    ev = dev[0].wait_event(['P2P-DEVICE-FOUND'], timeout=1)
+    ev = dev[0].wait_global_event(['P2P-DEVICE-FOUND'], timeout=1)
     if ev:
         raise Exception("Unexpected P2P device found")
     dev[0].p2p_find(social=True, dev_id=addr1)
-    ev = dev[0].wait_event(['P2P-DEVICE-FOUND'], timeout=2)
+    ev = dev[0].wait_global_event(['P2P-DEVICE-FOUND'], timeout=5)
     if ev is None:
         raise Exception("P2P device not found")
     if addr1 not in ev:
@@ -218,11 +227,11 @@ def test_discovery_dev_id_go(dev):
     dev[1].p2p_connect_group(dev[0].p2p_dev_addr(), pin, timeout=60)
 
     dev[2].p2p_find(social=True, dev_id="02:03:04:05:06:07")
-    ev = dev[2].wait_event(['P2P-DEVICE-FOUND'], timeout=1)
+    ev = dev[2].wait_global_event(['P2P-DEVICE-FOUND'], timeout=1)
     if ev:
         raise Exception("Unexpected P2P device found")
     dev[2].p2p_find(social=True, dev_id=addr1)
-    ev = dev[2].wait_event(['P2P-DEVICE-FOUND ' + addr1], timeout=2)
+    ev = dev[2].wait_global_event(['P2P-DEVICE-FOUND ' + addr1], timeout=2)
     if ev is None:
         raise Exception("P2P device not found")
 
@@ -284,6 +293,7 @@ def test_discovery_and_interface_disabled(dev):
 
 def test_discovery_auto(dev):
     """P2P device discovery and provision discovery with auto GO/dev selection"""
+    dev[0].flush_scan_cache()
     addr0 = dev[0].p2p_dev_addr()
     addr1 = dev[1].p2p_dev_addr()
     addr2 = dev[2].p2p_dev_addr()
@@ -361,7 +371,7 @@ def test_discovery_stop(dev):
     ev = dev[0].wait_event(["CTRL-EVENT-SCAN-STARTED"], timeout=0.5)
     if ev is None:
         logger.info("No CTRL-EVENT-SCAN-STARTED event")
-    dev[0].request("P2P_FLUSH")
+    dev[0].global_request("P2P_FLUSH")
     ev = dev[0].wait_global_event(["P2P-FIND-STOPPED"], timeout=1)
     if ev is None:
         raise Exception("P2P_STOP not reported")
@@ -412,7 +422,7 @@ def test_p2p_listen_and_offchannel_tx(dev):
 
     dev[0].p2p_listen()
     dev[0].global_request("P2P_PROV_DISC " + addr1 + " display")
-    ev = dev[0].wait_event(["P2P-PROV-DISC-ENTER-PIN"], timeout=15)
+    ev = dev[0].wait_global_event(["P2P-PROV-DISC-ENTER-PIN"], timeout=15)
     if ev is None:
         raise Exception("No PD result reported")
     dev[1].p2p_stop_find()
@@ -434,3 +444,34 @@ def test_p2p_listen_and_scan(dev):
     ev = dev[0].wait_event(["CTRL-EVENT-SCAN-RESULTS"], 15)
     if ev is None:
         raise Exception("Scan timed out")
+
+def test_p2p_config_methods(dev):
+    """P2P and WPS config method update"""
+    addr0 = dev[0].p2p_dev_addr()
+    wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
+    wpas.interface_add("wlan5")
+    addr1 = wpas.p2p_dev_addr()
+
+    if "OK" not in wpas.request("SET config_methods keypad virtual_push_button"):
+        raise Exception("Failed to set config_methods")
+
+    wpas.p2p_listen()
+    if not dev[0].discover_peer(addr1):
+        raise Exception("Device discovery timed out")
+    dev[0].p2p_stop_find()
+    peer = dev[0].get_peer(addr1)
+    if peer['config_methods'] != '0x180':
+        raise Exception("Unexpected peer config methods(1): " + peer['config_methods'])
+    dev[0].global_request("P2P_FLUSH")
+
+    if "OK" not in wpas.request("SET config_methods virtual_display"):
+        raise Exception("Failed to set config_methods")
+
+    if not dev[0].discover_peer(addr1):
+        raise Exception("Device discovery timed out")
+    dev[0].p2p_stop_find()
+    peer = dev[0].get_peer(addr1)
+    if peer['config_methods'] != '0x8':
+        raise Exception("Unexpected peer config methods(2): " + peer['config_methods'])
+
+    wpas.p2p_stop_find()
