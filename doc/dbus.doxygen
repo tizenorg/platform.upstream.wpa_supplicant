@@ -307,6 +307,16 @@ fi.w1.wpa_supplicant1.CreateInterface.
       </li>
 
       <li>
+	<h3>Reconnect ( ) --> nothing</h3>
+	<p>Attempt reconnection and connect if in disconnected state.</p>
+	<h4>Possible errors</h4>
+	<dl>
+	  <dt>fi.w1.wpa_supplicant1.InterfaceDisabled</dt>
+	  <dd>The interface is disabled.</dd>
+	</dl>
+      </li>
+
+      <li>
 	<h3>AddBlob ( s : name, ay : data ) --> nothing</h3>
 	<p>Adds a blob to the interface.</p>
 	<h4>Arguments</h4>
@@ -877,6 +887,10 @@ Interface for performing WPS (Wi-Fi Simple Config) operations.
 	  <dd>Invalid entries were found in the passed argument.</dd>
 	</dl>
       </li>
+      <li>
+	<h3>Cancel ( nothing ) --> nothing</h3>
+	<p>Cancel ongoing WPS operation.</p>
+      </li>
     </ul>
 
 \subsection dbus_wps_properties Properties
@@ -901,10 +915,11 @@ Interface for performing WPS (Wi-Fi Simple Config) operations.
 	<h4>Arguments</h4>
 	<dl>
 	  <dt>s : event</dt>
-	  <dd>Event type. Possible values are: "success, "fail" and "m2d"</dd>
+	  <dd>Event type. Possible values are: "success, "fail", "m2d", and
+	  "pbc-overlap".</dd>
 	  <dt>a{sv} : args</dt>
 	  <dd>
-	    Event arguments. Empty for success event, one entry ( "msg" : i ) for fail event and following entries for m2d event:
+	    Event arguments. Empty for success and pbc-overlap events, error information ( "msg" : i, "config_error" : i, "error_indication" : i ) for fail event and following entries for m2d event:
 	    <table>
 	      <tr><th>config_methods</th><th>Value type</th>
 	      <tr><td>manufacturer</td><td>q</td>
@@ -964,7 +979,7 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 	<table>
 	<tr><th>Key</th><th>Value type</th><th>Description</th><th>Required</th></tr>
 	<tr><td>Timeout</td><td>i</td><td>Timeout for operating in seconds</td><td>no</td></tr>
-	<tr><td>RequestedDevicesTypes</td><td>aay</td><td>WPS Device Types to search for</td><td>no</td></tr>
+	<tr><td>RequestedDeviceTypes</td><td>aay</td><td>WPS Device Types to search for</td><td>no</td></tr>
 	<tr><td>DiscoveryType</td><td>s</td><td>"start_with_full" (default, if not specified), "social", "progressive"</td><td>no</td></tr>
 	</table>
       </dd>
@@ -1070,6 +1085,11 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
   </li>
 
   <li>
+    <h3>Cancel ( nothing ) --> nothing</h3>
+    <p>Stop ongoing P2P group formation operation.</p>
+  </li>
+
+  <li>
     <h3>Invite ( a{sv} : args ) --> nothing</h3>
     <p>Invite a peer to join an already operating group or to re-invoke a persistent group.</p>
     <h4>Arguments</h4>
@@ -1096,6 +1116,23 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
   <li>
     <h3>RejectPeer ( o : peer ) --> nothing</h3>
     <p>Reject connection attempt from a peer (specified with a device address). This is a mechanism to reject a pending GO Negotiation with a peer and request to automatically block any further connection or discovery of the peer.</p>
+  </li>
+
+  <li>
+    <h3>RemoveClient ( a{sv} : args ) --> nothing</h3>
+    <p>Remove the client from all groups (operating and persistent) from the local GO.</p>
+    <h4>Arguments</h4>
+    <dl>
+      <dt>a{sv} : args</dt>
+      <dd>
+	A dictionary with parameters for removing a client:
+	<table>
+	<tr><th>Key</th><th>Value type</th><th>Description</th><th>Required</th></tr>
+	<tr><td>peer</td><td>o</td><td>Object path for peer's P2P Device Address</td><td>yes</td></tr>
+	<tr><td>iface</td><td>s</td><td>Interface address[MAC Address format] of the peer to be disconnected. Required if object path is not provided.</td><td>no</td></tr>
+	</table>
+      </dd>
+    </dl>
   </li>
 
   <li>
@@ -1240,6 +1277,7 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
     <tr><td>GOIntent</td><td>u</td><td></td></tr>
     <tr><td>PersistentReconnect</td><td>b</td><td></td></tr>
     <tr><td>ListenRegClass</td><td>u</td><td></td></tr>
+    <tr><td>ListenChannel</td><td>u</td><td></td></tr>
     <tr><td>OperRegClass</td><td>u</td><td></td></tr>
     <tr><td>OperChannel</td><td>u</td><td></td></tr>
     <tr><td>SsidPostfix</td><td>s</td><td></td></tr>
@@ -1284,6 +1322,10 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 
   <li>
     <h3>DeviceLost ( o : path )</h3>
+  </li>
+
+  <li>
+    <h3>FindStopped ( )</h3>
   </li>
 
   <li>
@@ -1373,7 +1415,7 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
   </li>
 
   <li>
-    <h3>GONegotiationRequest ( o : path, i : dev_passwd_id )</h3>
+    <h3>GONegotiationRequest ( o : path, q : dev_passwd_id, y : device_go_intent )</h3>
   </li>
 
   <li>
@@ -1489,6 +1531,35 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 	  <tr><td>config_error</td><td>n</td><td></td></tr>
 	</table>
       </dd>
+    </dl>
+  </li>
+
+  <li>
+    <h3>InvitationReceived ( a{sv} : properties )</h3>
+    <p></p>
+    <h4>Arguments</h4>
+    <dl>
+      <dt>a{sv} : properties</dt>
+      <dd>A dictionary with following information:
+	<table>
+	  <tr><th>Key</th><th>Value type</th><th>Description</th></tr>
+	  <tr><td>sa</td><td>ay</td><td>Optionally present</td></tr>
+	  <tr><td>go_dev_addr</td><td>ay</td><td>Optionally present</td></tr>
+	  <tr><td>bssid</td><td>ay</td><td>Optionally present</td></tr>
+	  <tr><td>persistent_id</td><td>i</td><td>Optionally present</td></tr>
+	  <tr><td>op_freq</td><td>i</td><td></td></tr>
+	</table>
+      </dd>
+    </dl>
+  </li>
+
+  <li>
+    <h3>GroupFormationFailure ( s : reason )</h3>
+    <p></p>
+    <h4>Arguments</h4>
+    <dl>
+      <dt>s : reason</dt>
+      <dd>Reason for failure or empty string if not known.</dd>
     </dl>
   </li>
 </ul>
@@ -1622,6 +1693,22 @@ Interface implemented by objects representing P2P peer devices.
 <ul>
   <li>
     <h3>DeviceName - s - (read)</h3>
+  </li>
+
+  <li>
+    <h3>Manufacturer - s - (read)</h3>
+  </li>
+
+  <li>
+    <h3>ModelName - s - (read)</h3>
+  </li>
+
+  <li>
+    <h3>ModelNumber - s - (read)</h3>
+  </li>
+
+  <li>
+    <h3>SerialNumber - s - (read)</h3>
   </li>
 
   <li>

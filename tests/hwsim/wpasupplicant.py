@@ -53,7 +53,9 @@ class WpaSupplicant:
             self.ctrl = None
             self.ifname = None
 
-    def interface_add(self, ifname, config="", driver="nl80211", drv_params=None):
+    def interface_add(self, ifname, config="", driver="nl80211",
+                      drv_params=None, br_ifname=None, create=False,
+                      set_ifname=True, all_params=False):
         try:
             groups = subprocess.check_output(["id"])
             group = "admin" if "(admin)" in groups else "adm"
@@ -62,17 +64,34 @@ class WpaSupplicant:
         cmd = "INTERFACE_ADD " + ifname + "\t" + config + "\t" + driver + "\tDIR=/var/run/wpa_supplicant GROUP=" + group
         if drv_params:
             cmd = cmd + '\t' + drv_params
+        if br_ifname:
+            if not drv_params:
+                cmd += '\t'
+            cmd += '\t' + br_ifname
+        if create:
+            if not br_ifname:
+                cmd += '\t'
+                if not drv_params:
+                    cmd += '\t'
+            cmd += '\tcreate'
+        if all_params and not create:
+            if not br_ifname:
+                cmd += '\t'
+                if not drv_params:
+                    cmd += '\t'
+            cmd += '\t'
         if "FAIL" in self.global_request(cmd):
             raise Exception("Failed to add a dynamic wpa_supplicant interface")
-        self.set_ifname(ifname)
+        if not create and set_ifname:
+            self.set_ifname(ifname)
 
     def interface_remove(self, ifname):
         self.remove_ifname()
         self.global_request("INTERFACE_REMOVE " + ifname)
 
-    def request(self, cmd):
+    def request(self, cmd, timeout=10):
         logger.debug(self.ifname + ": CTRL: " + cmd)
-        return self.ctrl.request(cmd)
+        return self.ctrl.request(cmd, timeout=timeout)
 
     def global_request(self, cmd):
         if self.global_iface is None:
@@ -100,11 +119,13 @@ class WpaSupplicant:
         res = self.request("FLUSH")
         if not "OK" in res:
             logger.info("FLUSH to " + self.ifname + " failed: " + res)
-        self.request("SET p2p_add_cli_chan 0")
-        self.request("SET p2p_no_go_freq ")
-        self.request("SET p2p_pref_chan ")
-        self.request("SET p2p_no_group_iface 1")
-        self.request("SET p2p_go_intent 7")
+        self.global_request("REMOVE_NETWORK all")
+        self.global_request("SET p2p_add_cli_chan 0")
+        self.global_request("SET p2p_no_go_freq ")
+        self.global_request("SET p2p_pref_chan ")
+        self.global_request("SET p2p_no_group_iface 1")
+        self.global_request("SET p2p_go_intent 7")
+        self.global_request("P2P_FLUSH")
         self.request("SET ignore_old_scan_res 0")
         if self.gctrl_mon:
             try:
@@ -117,8 +138,11 @@ class WpaSupplicant:
 
         iter = 0
         while iter < 60:
-            state = self.get_driver_status_field("scan_state")
-            if "SCAN_STARTED" in state or "SCAN_REQUESTED" in state:
+            state1 = self.get_driver_status_field("scan_state")
+            p2pdev = "p2p-dev-" + self.ifname
+            state2 = self.get_driver_status_field("scan_state", ifname=p2pdev)
+            states = str(state1) + " " + str(state2)
+            if "SCAN_STARTED" in states or "SCAN_REQUESTED" in states:
                 logger.info(self.ifname + ": Waiting for scan operation to complete before continuing")
                 time.sleep(1)
             else:
@@ -128,13 +152,13 @@ class WpaSupplicant:
             logger.error(self.ifname + ": Driver scan state did not clear")
             print "Trying to clear cfg80211/mac80211 scan state"
             try:
-                cmd = ["sudo", "ifconfig", self.ifname, "down"]
+                cmd = ["ifconfig", self.ifname, "down"]
                 subprocess.call(cmd)
             except subprocess.CalledProcessError, e:
                 logger.info("ifconfig failed: " + str(e.returncode))
                 logger.info(e.output)
             try:
-                cmd = ["sudo", "ifconfig", self.ifname, "up"]
+                cmd = ["ifconfig", self.ifname, "up"]
                 subprocess.call(cmd)
             except subprocess.CalledProcessError, e:
                 logger.info("ifconfig failed: " + str(e.returncode))
@@ -178,8 +202,11 @@ class WpaSupplicant:
             raise Exception("SET_NETWORK failed")
         return None
 
-    def list_networks(self):
-        res = self.request("LIST_NETWORKS")
+    def list_networks(self, p2p=False):
+        if p2p:
+            res = self.global_request("LIST_NETWORKS")
+        else:
+            res = self.request("LIST_NETWORKS")
         lines = res.splitlines()
         networks = []
         for l in lines:
@@ -201,6 +228,12 @@ class WpaSupplicant:
             self.request("SET auto_interworking 1")
         else:
             self.request("SET auto_interworking 0")
+
+    def interworking_add_network(self, bssid):
+        id = self.request("INTERWORKING_ADD_NETWORK " + bssid)
+        if "FAIL" in id or "OK" in id:
+            raise Exception("INTERWORKING_ADD_NETWORK failed")
+        return int(id)
 
     def add_cred(self):
         id = self.request("ADD_CRED")
@@ -253,7 +286,7 @@ class WpaSupplicant:
 
     def select_network(self, id, freq=None):
         if freq:
-            extra = " freq=" + freq
+            extra = " freq=" + str(freq)
         else:
             extra = ""
         id = self.request("SELECT_NETWORK " + str(id) + extra)
@@ -324,8 +357,13 @@ class WpaSupplicant:
             return vals[field]
         return None
 
-    def get_driver_status(self):
-        res = self.request("STATUS-DRIVER")
+    def get_driver_status(self, ifname=None):
+        if ifname is None:
+            res = self.request("STATUS-DRIVER")
+        else:
+            res = self.global_request("IFNAME=%s STATUS-DRIVER" % ifname)
+            if res.startswith("FAIL"):
+                return dict()
         lines = res.splitlines()
         vals = dict()
         for l in lines:
@@ -337,8 +375,8 @@ class WpaSupplicant:
             vals[name] = value
         return vals
 
-    def get_driver_status_field(self, field):
-        vals = self.get_driver_status()
+    def get_driver_status_field(self, field, ifname=None):
+        vals = self.get_driver_status(ifname)
         if field in vals:
             return vals[field]
         return None
@@ -376,7 +414,7 @@ class WpaSupplicant:
         return self.global_request("P2P_LISTEN")
 
     def p2p_find(self, social=False, progressive=False, dev_id=None,
-                 dev_type=None, delay=None):
+                 dev_type=None, delay=None, freq=None):
         cmd = "P2P_FIND"
         if social:
             cmd = cmd + " type=social"
@@ -388,6 +426,8 @@ class WpaSupplicant:
             cmd = cmd + " dev_type=" + dev_type
         if delay:
             cmd = cmd + " delay=" + str(delay)
+        if freq:
+            cmd = cmd + " freq=" + str(freq)
         return self.global_request(cmd)
 
     def p2p_stop_find(self):
@@ -641,7 +681,7 @@ class WpaSupplicant:
             except:
                 pass
             self.gctrl_mon = None
-        ev = self.wait_event(["P2P-GROUP-REMOVED"], timeout=3)
+        ev = self.wait_global_event(["P2P-GROUP-REMOVED"], timeout=3)
         if ev is None:
             raise Exception("Group removal event timed out")
         if "reason=GO_ENDING_SESSION" not in ev:
@@ -733,6 +773,13 @@ class WpaSupplicant:
             raise Exception("Failed to request TDLS teardown")
         return None
 
+    def tdls_link_status(self, peer):
+        cmd = "TDLS_LINK_STATUS " + peer
+        ret = self.group_request(cmd)
+        if "FAIL" in ret:
+            raise Exception("Failed to request TDLS link status")
+        return ret
+
     def tspecs(self):
         """Return (tsid, up) tuples representing current tspecs"""
         res = self.request("WMM_AC_STATUS")
@@ -811,14 +858,14 @@ class WpaSupplicant:
 
         not_quoted = [ "proto", "key_mgmt", "ieee80211w", "pairwise",
                        "group", "wep_key0", "wep_key1", "wep_key2", "wep_key3",
-                       "wep_tx_keyidx", "scan_freq", "eap",
+                       "wep_tx_keyidx", "scan_freq", "freq_list", "eap",
                        "eapol_flags", "fragment_size", "scan_ssid", "auth_alg",
                        "wpa_ptk_rekey", "disable_ht", "disable_vht", "bssid",
                        "disable_max_amsdu", "ampdu_factor", "ampdu_density",
                        "disable_ht40", "disable_sgi", "disable_ldpc",
                        "ht40_intolerant", "update_identifier", "mac_addr",
                        "erp", "bg_scan_period", "bssid_blacklist",
-                       "bssid_whitelist" ]
+                       "bssid_whitelist", "mem_only_psk", "eap_workaround" ]
         for field in not_quoted:
             if field in kwargs and kwargs[field]:
                 self.set_network(id, field, kwargs[field])
@@ -864,11 +911,11 @@ class WpaSupplicant:
         if ev is None:
             raise Exception("Scan timed out")
 
-    def scan_for_bss(self, bssid, freq=None, force_scan=False):
+    def scan_for_bss(self, bssid, freq=None, force_scan=False, only_new=False):
         if not force_scan and self.get_bss(bssid) is not None:
             return
         for i in range(0, 10):
-            self.scan(freq=freq, type="ONLY")
+            self.scan(freq=freq, type="ONLY", only_new=only_new)
             if self.get_bss(bssid) is not None:
                 return
         raise Exception("Could not find BSS " + bssid + " in scan")
@@ -876,6 +923,13 @@ class WpaSupplicant:
     def flush_scan_cache(self, freq=2417):
         self.request("BSS_FLUSH 0")
         self.scan(freq=freq, only_new=True)
+        res = self.request("SCAN_RESULTS")
+        if len(res.splitlines()) > 1:
+            self.request("BSS_FLUSH 0")
+            self.scan(freq=2422, only_new=True)
+            res = self.request("SCAN_RESULTS")
+            if len(res.splitlines()) > 1:
+                logger.info("flush_scan_cache: Could not clear all BSS entries. These remain:\n" + res)
 
     def roam(self, bssid, fail_test=False):
         self.dump_monitor()
@@ -941,8 +995,14 @@ class WpaSupplicant:
             return None
         return res.split(' ')
 
-    def get_bss(self, bssid):
-        res = self.request("BSS " + bssid)
+    def get_bss(self, bssid, ifname=None):
+	if not ifname or ifname == self.ifname:
+            res = self.request("BSS " + bssid)
+        elif ifname == self.group_ifname:
+            res = self.group_request("BSS " + bssid)
+        else:
+            return None
+
         if "FAIL" in res:
             return None
         lines = res.splitlines()
@@ -1030,3 +1090,33 @@ class WpaSupplicant:
         if ev is None:
             raise Exception(error)
         return ev
+
+    def get_group_ifname(self):
+        return self.group_ifname if self.group_ifname else self.ifname
+
+    def get_config(self):
+        res = self.request("DUMP")
+        if res.startswith("FAIL"):
+            raise Exception("DUMP failed")
+        lines = res.splitlines()
+        vals = dict()
+        for l in lines:
+            [name,value] = l.split('=', 1)
+            vals[name] = value
+        return vals
+
+    def asp_provision(self, peer, adv_id, adv_mac, session_id, session_mac,
+                      method="1000", info="", status=None, cpt=None):
+        if status is None:
+            cmd = "P2P_ASP_PROVISION"
+            params = "info='%s' method=%s" % (info, method)
+        else:
+            cmd = "P2P_ASP_PROVISION_RESP"
+            params = "status=%d" % status
+
+        if cpt is not None:
+            params += " cpt=" + cpt
+
+        if "OK" not in self.global_request("%s %s adv_id=%s adv_mac=%s session=%d session_mac=%s %s" %
+                                           (cmd, peer, adv_id, adv_mac, session_id, session_mac, params)):
+            raise Exception("%s request failed" % cmd)
