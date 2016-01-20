@@ -18,10 +18,14 @@ import termios
 import logging
 logger = logging.getLogger()
 
-if os.path.exists('../../wpaspy'):
-    sys.path.append('../../wpaspy')
-else:
-    sys.path.append('../../../wpaspy')
+try:
+    import sqlite3
+    sqlite3_imported = True
+except ImportError:
+    sqlite3_imported = False
+
+scriptsdir = os.path.dirname(os.path.realpath(sys.modules[__name__].__file__))
+sys.path.append(os.path.join(scriptsdir, '..', '..', 'wpaspy'))
 
 from wpasupplicant import WpaSupplicant
 from hostapd import HostapdGlobal
@@ -82,7 +86,7 @@ def add_log_file(conn, test, run, type, path):
     if contents is None:
         return
     sql = "INSERT INTO logs(test,run,type,contents) VALUES(?, ?, ?, ?)"
-    params = (test, run, type, contents)
+    params = (test, run, type, sqlite3.Binary(contents))
     try:
         conn.execute(sql, params)
         conn.commit()
@@ -124,7 +128,7 @@ class DataCollector(object):
     def __enter__(self):
         if self._tracing:
             output = os.path.abspath(os.path.join(self._logdir, '%s.dat' % (self._testname, )))
-            self._trace_cmd = subprocess.Popen(['sudo', 'trace-cmd', 'record', '-o', output, '-e', 'mac80211', '-e', 'cfg80211', 'sh', '-c', 'echo STARTED ; read l'],
+            self._trace_cmd = subprocess.Popen(['trace-cmd', 'record', '-o', output, '-e', 'mac80211', '-e', 'cfg80211', '-e', 'printk', 'sh', '-c', 'echo STARTED ; read l'],
                                                stdin=subprocess.PIPE,
                                                stdout=subprocess.PIPE,
                                                stderr=open('/dev/null', 'w'),
@@ -142,7 +146,11 @@ class DataCollector(object):
             self._trace_cmd.wait()
         if self._dmesg:
             output = os.path.join(self._logdir, '%s.dmesg' % (self._testname, ))
-            subprocess.call(['sudo', 'dmesg', '-c'], stdout=open(output, 'w'))
+            num = 0
+            while os.path.exists(output):
+                output = os.path.join(self._logdir, '%s.dmesg-%d' % (self._testname, num))
+                num += 1
+            subprocess.call(['dmesg', '-c'], stdout=open(output, 'w'))
 
 def rename_log(logdir, basename, testname, dev):
     try:
@@ -157,7 +165,7 @@ def rename_log(logdir, basename, testname, dev):
         os.rename(srcname, dstname)
         if dev:
             dev.relog()
-            subprocess.call(['sudo', 'chown', '-f', getpass.getuser(), srcname])
+            subprocess.call(['chown', '-f', getpass.getuser(), srcname])
     except Exception, e:
         logger.info("Failed to rename log files")
         logger.info(e)
@@ -165,10 +173,7 @@ def rename_log(logdir, basename, testname, dev):
 def main():
     tests = []
     test_modules = []
-    if os.path.exists('run-tests.py'):
-        files = os.listdir(".")
-    else:
-        files = os.listdir("..")
+    files = os.listdir(scriptsdir)
     for t in files:
         m = re.match(r'(test_.*)\.py$', t)
         if m:
@@ -232,7 +237,9 @@ def main():
         sys.exit(2)
 
     if args.database:
-        import sqlite3
+        if not sqlite3_imported:
+            print "No sqlite3 module found"
+            sys.exit(2)
         conn = sqlite3.connect(args.database)
         conn.execute('CREATE TABLE IF NOT EXISTS results (test,result,run,time,duration,build,commitid)')
         conn.execute('CREATE TABLE IF NOT EXISTS tests (test,description)')
@@ -338,7 +345,7 @@ def main():
         sys.exit(1)
 
     if args.dmesg:
-        subprocess.call(['sudo', 'dmesg', '-c'], stdout=open('/dev/null', 'w'))
+        subprocess.call(['dmesg', '-c'], stdout=open('/dev/null', 'w'))
 
     if conn and args.prefill:
         for t in tests_to_run:
@@ -484,10 +491,17 @@ def main():
                 result = "FAIL"
                 hapd = None
             rename_log(args.logdir, 'hostapd', name, hapd)
+            if hapd:
+                del hapd
+                hapd = None
 
             wt = Wlantest()
             rename_log(args.logdir, 'hwsim0.pcapng', name, wt)
             rename_log(args.logdir, 'hwsim0', name, wt)
+            if os.path.exists(os.path.join(args.logdir, 'fst-wpa_supplicant')):
+                rename_log(args.logdir, 'fst-wpa_supplicant', name, None)
+            if os.path.exists(os.path.join(args.logdir, 'fst-hostapd')):
+                rename_log(args.logdir, 'fst-hostapd', name, None)
 
         end = datetime.now()
         diff = end - start
