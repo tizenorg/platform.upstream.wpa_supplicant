@@ -21,9 +21,37 @@ def mac2tuple(mac):
 class HostapdGlobal:
     def __init__(self):
         self.ctrl = wpaspy.Ctrl(hapd_global)
+        self.mon = wpaspy.Ctrl(hapd_global)
+        self.mon.attach()
 
-    def add(self, ifname):
-        res = self.ctrl.request("ADD " + ifname + " " + hapd_ctrl)
+    def request(self, cmd):
+        return self.ctrl.request(cmd)
+
+    def wait_event(self, events, timeout):
+        start = os.times()[4]
+        while True:
+            while self.mon.pending():
+                ev = self.mon.recv()
+                logger.debug("(global): " + ev)
+                for event in events:
+                    if event in ev:
+                        return ev
+            now = os.times()[4]
+            remaining = start + timeout - now
+            if remaining <= 0:
+                break
+            if not self.mon.pending(timeout=remaining):
+                break
+        return None
+
+    def request(self, cmd):
+        return self.ctrl.request(cmd)
+
+    def add(self, ifname, driver=None):
+        cmd = "ADD " + ifname + " " + hapd_ctrl
+        if driver:
+            cmd += " " + driver
+        res = self.ctrl.request(cmd)
         if not "OK" in res:
             raise Exception("Could not add hostapd interface " + ifname)
 
@@ -49,16 +77,17 @@ class HostapdGlobal:
 
 
 class Hostapd:
-    def __init__(self, ifname):
+    def __init__(self, ifname, bssidx=0):
         self.ifname = ifname
         self.ctrl = wpaspy.Ctrl(os.path.join(hapd_ctrl, ifname))
         self.mon = wpaspy.Ctrl(os.path.join(hapd_ctrl, ifname))
         self.mon.attach()
         self.bssid = None
+        self.bssidx = bssidx
 
     def own_addr(self):
         if self.bssid is None:
-            self.bssid = self.get_status_field('bssid[0]')
+            self.bssid = self.get_status_field('bssid[%d]' % self.bssidx)
         return self.bssid
 
     def request(self, cmd):
@@ -225,7 +254,7 @@ class Hostapd:
         vals = dict()
         first = True
         for l in lines:
-            if first:
+            if first and '=' not in l:
                 vals['addr'] = l
                 first = False
             else:

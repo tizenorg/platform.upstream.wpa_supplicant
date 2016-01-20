@@ -16,6 +16,62 @@ import time
 
 logger = logging.getLogger()
 
+# Test cases that take significantly longer time to execute than average.
+long_tests = [ "ap_roam_open",
+               "wpas_mesh_password_mismatch_retry",
+               "wpas_mesh_password_mismatch",
+               "hostapd_oom_wpa2_psk_connect",
+               "ap_hs20_fetch_osu_stop",
+               "ap_roam_wpa2_psk",
+               "ibss_wpa_none_ccmp",
+               "nfc_wps_er_handover_pk_hash_mismatch_sta",
+               "go_neg_peers_force_diff_freq",
+               "p2p_cli_invite",
+               "sta_ap_scan_2b",
+               "ap_pmf_sta_unprot_deauth_burst",
+               "ap_bss_add_remove_during_ht_scan",
+               "wext_scan_hidden",
+               "autoscan_exponential",
+               "nfc_p2p_client",
+               "wnm_bss_keep_alive",
+               "ap_inactivity_disconnect",
+               "scan_bss_expiration_age",
+               "autoscan_periodic",
+               "discovery_group_client",
+               "concurrent_p2pcli",
+               "ap_bss_add_remove",
+               "wpas_ap_wps",
+               "wext_pmksa_cache",
+               "ibss_wpa_none",
+               "ap_ht_40mhz_intolerant_ap",
+               "ibss_rsn",
+               "discovery_pd_retries",
+               "ap_wps_setup_locked_timeout",
+               "ap_vht160",
+               "dfs_radar",
+               "dfs",
+               "grpform_cred_ready_timeout",
+               "hostapd_oom_wpa2_eap_connect",
+               "wpas_ap_dfs",
+               "autogo_many",
+               "hostapd_oom_wpa2_eap",
+               "ibss_open",
+               "proxyarp_open_ebtables",
+               "radius_failover",
+               "obss_scan_40_intolerant",
+               "dbus_connect_oom",
+               "proxyarp_open",
+               "ap_wps_iteration",
+               "ap_wps_iteration_error",
+               "ap_wps_pbc_timeout",
+               "ap_wps_http_timeout",
+               "p2p_go_move_reg_change",
+               "p2p_go_move_active",
+               "p2p_go_move_scm",
+               "p2p_go_move_scm_peer_supports",
+               "p2p_go_move_scm_peer_does_not_support",
+               "p2p_go_move_scm_multi" ]
+
 def get_failed(vm):
     failed = []
     for i in range(num_servers):
@@ -49,7 +105,12 @@ def vm_read_stdout(vm, i):
         elif line.startswith("FAIL"):
             ready = True
             total_failed += 1
-            name = line.split(' ')[1]
+            vals = line.split(' ')
+            if len(vals) < 2:
+                logger.info("VM[%d] incomplete FAIL line: %s" % (i, line))
+                name = line
+            else:
+                name = vals[1]
             logger.debug("VM[%d] test case failed: %s" % (i, name))
             vm['failed'].append(name)
         elif line.startswith("NOT-FOUND"):
@@ -61,6 +122,10 @@ def vm_read_stdout(vm, i):
             total_skipped += 1
         elif line.startswith("START"):
             total_started += 1
+            if len(vm['failed']) == 0:
+                vals = line.split(' ')
+                if len(vals) >= 2:
+                    vm['fail_seq'].append(vals[1])
         vm['out'] += line + '\n'
         lines.append(line)
     vm['pending'] = pending
@@ -240,6 +305,8 @@ def show_progress(scr):
     time.sleep(0.3)
 
 def main():
+    import argparse
+    import os
     global num_servers
     global vm
     global dir
@@ -256,31 +323,50 @@ def main():
 
     debug_level = logging.INFO
     rerun_failures = True
-
-    if len(sys.argv) < 2:
-        sys.exit("Usage: %s <number of VMs> [-1] [--debug] [--codecov] [params..]" % sys.argv[0])
-    num_servers = int(sys.argv[1])
-    if num_servers < 1:
-        sys.exit("Too small number of VMs")
-
     timestamp = int(time.time())
 
-    idx = 2
+    scriptsdir = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-    if len(sys.argv) > idx and sys.argv[idx] == "-1":
-        idx += 1
-        rerun_failures = False
-
-    if len(sys.argv) > idx and sys.argv[idx] == "--debug":
-        idx += 1
+    p = argparse.ArgumentParser(description='run multiple testing VMs in parallel')
+    p.add_argument('num_servers', metavar='number of VMs', type=int, choices=range(1, 100),
+                   help="number of VMs to start")
+    p.add_argument('-f', dest='testmodules', metavar='<test module>',
+                   help='execute only tests from these test modules',
+                   type=str, nargs='+')
+    p.add_argument('-1', dest='no_retry', action='store_const', const=True, default=False,
+                   help="don't retry failed tests automatically")
+    p.add_argument('--debug', dest='debug', action='store_const', const=True, default=False,
+                   help="enable debug logging")
+    p.add_argument('--codecov', dest='codecov', action='store_const', const=True, default=False,
+                   help="enable code coverage collection")
+    p.add_argument('--shuffle-tests', dest='shuffle', action='store_const', const=True, default=False,
+                   help="shuffle test cases to randomize order")
+    p.add_argument('--short', dest='short', action='store_const', const=True,
+                   default=False,
+                   help="only run short-duration test cases")
+    p.add_argument('--long', dest='long', action='store_const', const=True,
+                   default=False,
+                   help="include long-duration test cases")
+    p.add_argument('--valgrind', dest='valgrind', action='store_const',
+                   const=True, default=False,
+                   help="run tests under valgrind")
+    p.add_argument('params', nargs='*')
+    args = p.parse_args()
+    num_servers = args.num_servers
+    rerun_failures = not args.no_retry
+    if args.debug:
         debug_level = logging.DEBUG
-
-    if len(sys.argv) > idx and sys.argv[idx] == "--codecov":
-        idx += 1
+    extra_args = []
+    if args.valgrind:
+        extra_args += [ '--valgrind' ]
+    if args.long:
+        extra_args += [ '--long' ]
+    if args.codecov:
         print "Code coverage - build separate binaries"
         logdir = "/tmp/hwsim-test-logs/" + str(timestamp)
         os.makedirs(logdir)
-        subprocess.check_call(['./build-codecov.sh', logdir])
+        subprocess.check_call([os.path.join(scriptsdir, 'build-codecov.sh'),
+                               logdir])
         codecov_args = ['--codecov_dir', logdir]
         codecov = True
     else:
@@ -288,18 +374,21 @@ def main():
         codecov = False
 
     first_run_failures = []
-    tests = []
-    cmd = [ '../run-tests.py', '-L' ] + sys.argv[idx:]
-    lst = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    for l in lst.stdout.readlines():
-        name = l.split(' ')[0]
-        tests.append(name)
+    if args.params:
+        tests = args.params
+    else:
+        tests = []
+        cmd = [ os.path.join(os.path.dirname(scriptsdir), 'run-tests.py'),
+                '-L' ]
+        if args.testmodules:
+            cmd += [ "-f" ]
+            cmd += args.testmodules
+        lst = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        for l in lst.stdout.readlines():
+            name = l.split(' ')[0]
+            tests.append(name)
     if len(tests) == 0:
         sys.exit("No test cases selected")
-    if '-f' in sys.argv[idx:]:
-        extra_args = sys.argv[idx:]
-    else:
-        extra_args = [x for x in sys.argv[idx:] if x not in tests]
 
     dir = '/tmp/hwsim-test-logs'
     try:
@@ -307,47 +396,20 @@ def main():
     except:
         pass
 
-    if num_servers > 2 and len(tests) > 100:
+    if args.shuffle:
+        from random import shuffle
+        shuffle(tests)
+    elif num_servers > 2 and len(tests) > 100:
         # Move test cases with long duration to the beginning as an
         # optimization to avoid last part of the test execution running a long
         # duration test case on a single VM while all other VMs have already
         # completed their work.
-        long = [ "ap_roam_open",
-                 "ap_hs20_fetch_osu_stop",
-                 "ap_roam_wpa2_psk",
-                 "ibss_wpa_none_ccmp",
-                 "nfc_wps_er_handover_pk_hash_mismatch_sta",
-                 "go_neg_peers_force_diff_freq",
-                 "p2p_cli_invite",
-                 "sta_ap_scan_2b",
-                 "ap_pmf_sta_unprot_deauth_burst",
-                 "ap_bss_add_remove_during_ht_scan",
-                 "wext_scan_hidden",
-                 "autoscan_exponential",
-                 "nfc_p2p_client",
-                 "wnm_bss_keep_alive",
-                 "ap_inactivity_disconnect",
-                 "scan_bss_expiration_age",
-                 "autoscan_periodic",
-                 "discovery_group_client",
-                 "concurrent_p2pcli",
-                 "ap_bss_add_remove",
-                 "wpas_ap_wps",
-                 "wext_pmksa_cache",
-                 "ibss_wpa_none",
-                 "ap_ht_40mhz_intolerant_ap",
-                 "ibss_rsn",
-                 "discovery_pd_retries",
-                 "ap_wps_setup_locked_timeout",
-                 "ap_vht160",
-                 "dfs_radar",
-                 "dfs",
-                 "grpform_cred_ready_timeout",
-                 "ap_wps_pbc_timeout" ]
-        for l in long:
+        for l in long_tests:
             if l in tests:
                 tests.remove(l)
                 tests.insert(0, l)
+    if args.short:
+        tests = [t for t in tests if t not in long_tests]
 
     logger.setLevel(debug_level)
     log_handler = logging.FileHandler('parallel-vm.log')
@@ -361,7 +423,8 @@ def main():
     for i in range(0, num_servers):
         print("\rStarting virtual machine {}/{}".format(i + 1, num_servers)),
         logger.info("Starting virtual machine {}/{}".format(i + 1, num_servers))
-        cmd = ['./vm-run.sh', '--delay', str(i), '--timestamp', str(timestamp),
+        cmd = [os.path.join(scriptsdir, 'vm-run.sh'), '--delay', str(i),
+               '--timestamp', str(timestamp),
                '--ext', 'srv.%d' % (i + 1),
                '-i'] + codecov_args + extra_args
         vm[i] = {}
@@ -374,6 +437,7 @@ def main():
         vm[i]['pending'] = ""
         vm[i]['err'] = ""
         vm[i]['failed'] = []
+        vm[i]['fail_seq'] = []
         for stream in [ vm[i]['proc'].stdout, vm[i]['proc'].stderr ]:
             fd = stream.fileno()
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -389,6 +453,19 @@ def main():
     failed = get_failed(vm)
 
     if first_run_failures:
+        print "To re-run same failure sequence(s):"
+        for i in range(0, num_servers):
+            if len(vm[i]['failed']) == 0:
+                continue
+            print "./parallel-vm.py -1 1",
+            skip = len(vm[i]['fail_seq'])
+            skip -= min(skip, 30)
+            for t in vm[i]['fail_seq']:
+                if skip > 0:
+                    skip -= 1
+                    continue
+                print t,
+            print
         print "Failed test cases:"
         for f in first_run_failures:
             print f,
@@ -432,10 +509,12 @@ def main():
     if codecov:
         print "Code coverage - preparing report"
         for i in range(num_servers):
-            subprocess.check_call(['./process-codecov.sh',
+            subprocess.check_call([os.path.join(scriptsdir,
+                                                'process-codecov.sh'),
                                    logdir + ".srv.%d" % (i + 1),
                                    str(i)])
-        subprocess.check_call(['./combine-codecov.sh', logdir])
+        subprocess.check_call([os.path.join(scriptsdir, 'combine-codecov.sh'),
+                               logdir])
         print "file://%s/index.html" % logdir
         logger.info("Code coverage report: file://%s/index.html" % logdir)
 
