@@ -539,7 +539,8 @@ int hs20_add_pps_mo(struct hs20_osu_client *ctx, const char *uri,
 			wpa_printf(MSG_INFO, "Unsupported location for addMO to add PPS MO (extra directory): '%s'",
 				   uri);
 			write_result(ctx, "Unsupported location for addMO to "
-				     "add PPS MO (extra directory): '%s'", uri);
+					     "add PPS MO (extra directory): '%s'", uri);
+			free(fqdn);	
 			return -1;
 		}
 		*pos = '\0'; /* remove trailing slash and PPS node name */
