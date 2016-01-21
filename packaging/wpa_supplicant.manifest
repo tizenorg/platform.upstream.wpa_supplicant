@@ -1,5 +1,32 @@
 <manifest>
- <request>
-    <domain name="_"/>
- </request>
+	<define>
+		<domain name="wpasupplicant"/>
+		<request>
+			<smack request="dbus" type="rwx"/>
+			<smack request="wifi-direct" type="rwx"/>
+			<smack request="sys-assert::core" type="rwxat"/>
+			<smack request="ca-certificates::ssl-certs" type="rx"/>
+			<smack request="net-config::logging" type="rwx"/>
+			<smack request="mobileap-agent" type="rw"/>
+			<smack request="system::sys_logging" type="wx"/>
+			<smack request="syslogd" type="w"/>
+			<smack request="_" type="wx"/>
+		</request>
+		<permit>
+			<smack permit="^" type="w"/>
+			<smack permit="dbus" type="rwx"/>
+		</permit>
+	</define>
+	<assign>
+		<filesystem path="/etc/dbus-1/system.d/wpa_supplicant.conf" label="_"/>
+		<filesystem path="/usr/lib/systemd/system/network.target.wants/wpa_supplicant.service" label="_"/>
+		<filesystem path="/usr/lib/systemd/system/wpa_supplicant.service" label="_"/>
+		<filesystem path="/usr/share/doc/wpasupplicant/README.wpa_supplicant.conf.gz" label="_"/>
+		<filesystem path="/etc/rc.d/init.d/wpa_supplicant" label="_" exec_label="none"/>
+		<filesystem path="/etc/rc.d/rc3.d/S62wpasupplicant" label="_" exec_label="none"/>
+		<filesystem path="/etc/rc.d/rc5.d/S62wpasupplicant" label="_" exec_label="none"/>
+	</assign>
+	<request>
+		<domain name="wpasupplicant"/>
+	</request>
 </manifest>
