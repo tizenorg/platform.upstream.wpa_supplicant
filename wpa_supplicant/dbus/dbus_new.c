@@ -1915,13 +1915,23 @@ void wpas_dbus_signal_p2p_group_formation_failure(struct wpa_supplicant *wpa_s,
 	DBusMessage *msg;
 	struct wpas_dbus_priv *iface;
 
+#if defined TIZEN_EXT
+	struct wpa_supplicant *parent;
+#endif
 	iface = wpa_s->global->dbus;
 
 	/* Do nothing if the control interface is not turned on */
 	if (iface == NULL)
 		return;
 
-	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+#if defined TIZEN_EXT
+	parent = wpa_s->parent;
+	if (parent && parent->p2p_mgmt)
+		parent = parent->parent;
+
+#endif
+
+	msg = dbus_message_new_signal(parent->dbus_new_path,
 				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
 				      "GroupFormationFailure");
 	if (msg == NULL)
