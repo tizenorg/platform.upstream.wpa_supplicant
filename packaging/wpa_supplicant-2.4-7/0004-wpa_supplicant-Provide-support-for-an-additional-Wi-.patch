@@ -1,0 +1,278 @@
+From: Yu Jiung <jiung.yu@samsung.com>
+Date: Wed, 18 Nov 2015 09:38:37 +0900
+Subject: [wpa_supplicant]Provide support for an additional Wi-Fi module
+
+Change-Id: If38bf573ae114cf0bf6264abfeef325a840a5642
+Signed-off-by: Yu jiung <jiung.yu@samsung.com>
+---
+ files/wpa_supp.sh                       |  3 +-
+ hostapd/Makefile                        |  3 ++
+ hostapd/main.c                          |  3 ++
+ src/drivers/driver_nl80211.c            | 96 +++++++++++++++++++++++++++++++++
+ src/drivers/driver_nl80211.h            |  5 ++
+ wpa_supplicant/Makefile                 |  3 ++
+ wpa_supplicant/dbus/dbus_new.c          |  2 -
+ wpa_supplicant/dbus/dbus_new_handlers.c |  5 ++
+ wpa_supplicant/wpa_supplicant.c         |  8 +++
+ wpa_supplicant/wpa_supplicant.conf      |  1 +
+ 10 files changed, 126 insertions(+), 3 deletions(-)
+
+diff --git a/files/wpa_supp.sh b/files/wpa_supp.sh
+index 996a711..a0b53c2 100755
+--- a/files/wpa_supp.sh
++++ b/files/wpa_supp.sh
+@@ -22,7 +22,8 @@ start()
+ 
+ stop()
+ {
+-	/usr/bin/killall wpa_supplicant
++	/usr/bin/pkill -x wpa_supplicant
++	/bin/usleep 150000
+ }
+ 
+ case $1 in
+diff --git a/hostapd/Makefile b/hostapd/Makefile
+index 87ef16b..f0d1784 100644
+--- a/hostapd/Makefile
++++ b/hostapd/Makefile
+@@ -75,6 +75,9 @@ CFLAGS += -DTIZEN_EXT_SOFTAP
+ ifdef CONFIG_BCM_DRIVER_V115
+ CFLAGS += -DBCM_DRIVER_V115
+ endif
++ifdef CONFIG_TIZEN_WLAN_BOARD_SPRD
++CFLAGS += -DTIZEN_WLAN_BOARD_SPRD
++endif
+ CFLAGS += -I../src/drivers
+ 
+ # To force sizeof(enum) = 4
+diff --git a/hostapd/main.c b/hostapd/main.c
+index dd389a8..4aab444 100644
+--- a/hostapd/main.c
++++ b/hostapd/main.c
+@@ -227,6 +227,9 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
+ 		}
+ 		os_free(triggs);
+ 	}
++#if defined(TIZEN_WLAN_BOARD_SPRD)
++	hostapd_send_conf_to_driver(hapd);
++#endif
+ 
+ 	return 0;
+ }
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 78323a1..12dd6b0 100755
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -40,6 +40,11 @@
+ #include "radiotap_iter.h"
+ #include "rfkill.h"
+ #include "driver_nl80211.h"
++#if defined(TIZEN_WLAN_BOARD_SPRD)
++#include <sys/ioctl.h>
++#include "../ap/hostapd.h"
++#include "../ap/ap_config.h"
++#endif
+ 
+ 
+ #ifndef CONFIG_LIBNL20
+@@ -7439,6 +7444,95 @@ const u8 * wpa_driver_nl80211_get_macaddr(void *priv)
+ 	return bss->addr;
+ }
+ 
++#if defined(TIZEN_WLAN_BOARD_SPRD)
++
++typedef struct {
++	char *buf;
++	int used_len;
++	int total_len;
++} tizen_wifi_priv_cmd;
++
++static int drv_errors = 0;
++
++static void wpa_driver_send_hang_msg(struct wpa_driver_nl80211_data *drv)
++{
++	drv_errors++;
++	if (drv_errors > 4) {
++		drv_errors = 0;
++		wpa_msg(drv->ctx, MSG_INFO, "Driver State : HANGED");
++	}
++}
++
++static int wpa_driver_nl80211_priv_cmd(struct i802_bss *bss, const char *cmd)
++{
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct ifreq ifr;
++	tizen_wifi_priv_cmd priv_cmd;
++	char buf[MAX_DRV_CMD_SIZE];
++	int ret = 0;
++
++	if (cmd)
++		wpa_printf(MSG_DEBUG, "%s = %s", __func__, cmd);
++	else
++		return -1;
++
++	os_memset(&ifr, 0, sizeof(ifr));
++	os_memset(&priv_cmd, 0, sizeof(priv_cmd));
++	os_strlcpy(ifr.ifr_name, bss->ifname, IFNAMSIZ);
++
++	os_memset(buf, 0, sizeof(buf));
++	os_strlcpy(buf, cmd, sizeof(buf));
++
++	priv_cmd.buf = buf;
++	priv_cmd.used_len = sizeof(buf);
++	priv_cmd.total_len = sizeof(buf);
++	ifr.ifr_data = &priv_cmd;
++
++	wpa_printf(MSG_DEBUG, "[KGB_DEBUG] %s: ioctl socket [%d], ifname [%s]",
++			__func__, drv->global->ioctl_sock, bss->ifname);
++
++	ret = ioctl(drv->global->ioctl_sock, SIOCDEVPRIVATE + 1, &ifr);
++	if (ret < 0) {
++		wpa_printf(MSG_ERROR, "%s: failed to issue private commands",
++			   __func__);
++		wpa_driver_send_hang_msg(drv);
++		return ret;
++	}
++
++	drv_errors = 0;
++	return 0;
++}
++
++int hostapd_send_conf_to_driver(struct hostapd_data *hapd)
++{
++	char buf[MAX_DRV_CMD_SIZE];
++	char *ssid = hapd->conf->ssid.ssid;
++	unsigned int ssid_len = hapd->conf->ssid.ssid_len;
++	unsigned int ignore_broadcast_ssid = hapd->conf->ignore_broadcast_ssid;
++
++	memset(buf, 0, sizeof(buf));
++	snprintf(buf, sizeof(buf), "HIDDEN_SSID 0x%02x 0x%02x %s",
++			ignore_broadcast_ssid, ssid_len, ssid);
++	return wpa_driver_nl80211_priv_cmd(hapd->drv_priv, buf);
++}
++
++int wpa_driver_nl80211_send_acl_to_driver(struct i802_bss *bss,
++			       u8 *mac_addr, u8 accept_acl)
++{
++	char buf[MAX_DRV_CMD_SIZE];
++
++	memset(buf, 0, sizeof(buf));
++	if(accept_acl)
++		snprintf(buf, sizeof(buf), "CMD_ADD_WHITELIST " MACSTR,
++				MAC2STR(mac_addr));
++	else
++		snprintf(buf, sizeof(buf), "BLOCK " MACSTR,
++				MAC2STR(mac_addr));
++
++	return wpa_driver_nl80211_priv_cmd(bss, buf);
++}
++#endif
++
+ #ifdef BCM_DRIVER_V115
+ 
+ #define MAX_WPSP2PIE_CMD_SIZE		384
+@@ -7471,6 +7565,8 @@ int wpa_driver_nl80211_priv_cmd_bcm(void *priv, char *cmd, char *buf,
+ 
+ 	if (cmd)
+ 		wpa_printf(MSG_DEBUG, "%s = %s", __func__, cmd);
++	else
++		return -1;
+ 
+ 	os_memcpy(buf, cmd, strlen(cmd) + 1);
+ 
+diff --git a/src/drivers/driver_nl80211.h b/src/drivers/driver_nl80211.h
+index f80882f..a680c55 100755
+--- a/src/drivers/driver_nl80211.h
++++ b/src/drivers/driver_nl80211.h
+@@ -274,4 +274,9 @@ int wpa_driver_nl80211_stop_sched_scan(void *priv);
+ struct wpa_scan_results * wpa_driver_nl80211_get_scan_results(void *priv);
+ void nl80211_dump_scan(struct wpa_driver_nl80211_data *drv);
+ 
++#if defined(TIZEN_WLAN_BOARD_SPRD)
++#define MAX_DRV_CMD_SIZE		248
++int hostapd_send_conf_to_driver(struct hostapd_data *hapd);
++#endif
++
+ #endif /* DRIVER_NL80211_H */
+diff --git a/wpa_supplicant/Makefile b/wpa_supplicant/Makefile
+index 5b9be01..32629c0 100755
+--- a/wpa_supplicant/Makefile
++++ b/wpa_supplicant/Makefile
+@@ -94,6 +94,9 @@ CFLAGS += -DTIZEN_EXT_P2P
+ ifdef CONFIG_TIZEN_MOBILE
+ CFLAGS += -DTIZEN_MOBILE
+ endif
++ifdef CONFIG_TIZEN_WLAN_BOARD_SPRD
++CFLAGS += -DTIZEN_WLAN_BOARD_SPRD
++endif
+ 
+ ifndef CONFIG_OS
+ ifdef CONFIG_NATIVE_WINDOWS
+diff --git a/wpa_supplicant/dbus/dbus_new.c b/wpa_supplicant/dbus/dbus_new.c
+index f0c6a42..5f5beb5 100644
+--- a/wpa_supplicant/dbus/dbus_new.c
++++ b/wpa_supplicant/dbus/dbus_new.c
+@@ -1578,8 +1578,6 @@ void wpas_dbus_signal_p2p_peer_disconnected(struct wpa_supplicant *wpa_s,
+ 		parent = parent->parent;
+ 	if (!parent->dbus_new_path)
+ 		return;
+-	if (!parent->dbus_new_path)
+-		return;
+ 
+ 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
+ 			"%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/"
+diff --git a/wpa_supplicant/dbus/dbus_new_handlers.c b/wpa_supplicant/dbus/dbus_new_handlers.c
+index d16ce06..e983dc4 100644
+--- a/wpa_supplicant/dbus/dbus_new_handlers.c
++++ b/wpa_supplicant/dbus/dbus_new_handlers.c
+@@ -582,6 +582,11 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
+ 	if (ifname == NULL)
+ 		goto error; /* Required Ifname argument missing */
+ 
++#if defined TIZEN_WLAN_BOARD_SPRD
++	if (confname == NULL)
++		confname = os_strdup("/etc/wpa_supplicant/wpa_supplicant.conf");
++#endif /* TIZEN_WLAN_BOARD_SPRD */
++
+ 	/*
+ 	 * Try to get the wpa_supplicant record for this iface, return
+ 	 * an error if we already control it.
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index 53f3359..87676da 100755
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -4143,6 +4143,9 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
+ 	if (wpa_s->max_remain_on_chan == 0)
+ 		wpa_s->max_remain_on_chan = 1000;
+ 
++#ifdef TIZEN_WLAN_BOARD_SPRD
++	wpa_s->drv_flags &= ~WPA_DRIVER_FLAGS_DEDICATED_P2P_DEVICE;
++#endif /* TIZEN_WLAN_BOARD_SPRD */
+ 	/*
+ 	 * Only take p2p_mgmt parameters when P2P Device is supported.
+ 	 * Doing it here as it determines whether l2_packet_init() will be done
+@@ -4200,7 +4203,12 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
+ 		return -1;
+ 	}
+ 
++#ifdef TIZEN_WLAN_BOARD_SPRD
++	if (iface->p2p_mgmt && strncmp(wpa_s->ifname, "wlan", 4) &&
++			wpas_p2p_init(wpa_s->global, wpa_s) < 0) {
++#else /* TIZEN_WLAN_BOARD_SPRD */
+ 	if (iface->p2p_mgmt && wpas_p2p_init(wpa_s->global, wpa_s) < 0) {
++#endif /* TIZEN_WLAN_BOARD_SPRD */
+ 		wpa_msg(wpa_s, MSG_ERROR, "Failed to init P2P");
+ 		return -1;
+ 	}
+diff --git a/wpa_supplicant/wpa_supplicant.conf b/wpa_supplicant/wpa_supplicant.conf
+index e9b17ee..10b459d 100755
+--- a/wpa_supplicant/wpa_supplicant.conf
++++ b/wpa_supplicant/wpa_supplicant.conf
+@@ -403,6 +403,7 @@ interworking=0
+ #     credentials have been configured and scan did not find a
+ #     matching network block
+ auto_interworking=0
++wowlan_triggers=any
+ 
+ # credential block
+ #

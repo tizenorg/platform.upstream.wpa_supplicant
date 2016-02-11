@@ -1,0 +1,22 @@
+From: Maneesh Jain <maneesh.jain@samsung.com>
+Date: Mon, 18 Jan 2016 11:01:28 -0500
+Subject: [hs20]:Fixed Memory Leak Issue
+
+Change-Id: I2759413f4a5eb1b8071856a93e4d8299306d19e4
+Signed-off-by: Maneesh Jain <maneesh.jain@samsung.com>
+---
+ hs20/client/osu_client.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/hs20/client/osu_client.c b/hs20/client/osu_client.c
+index de7f351..be82ad6 100755
+--- a/hs20/client/osu_client.c
++++ b/hs20/client/osu_client.c
+@@ -540,6 +540,7 @@ int hs20_add_pps_mo(struct hs20_osu_client *ctx, const char *uri,
+ 				   uri);
+ 			write_result(ctx, "Unsupported location for addMO to "
+ 				     "add PPS MO (extra directory): '%s'", uri);
++			free(fqdn);
+ 			return -1;
+ 		}
+ 		*pos = '\0'; /* remove trailing slash and PPS node name */

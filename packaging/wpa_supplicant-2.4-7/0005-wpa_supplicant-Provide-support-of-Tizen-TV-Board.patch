@@ -1,0 +1,77 @@
+From: Maneesh Jain <maneesh.jain@samsung.com>
+Date: Sat, 12 Dec 2015 13:18:20 +0530
+Subject: [wpa_supplicant]: Provide support of Tizen TV Board
+
+Change-Id: Id0ad404ef47c6d6f347591bbb8a367c2da67c492
+Signed-off-by: Maneesh Jain <maneesh.jain@samsung.com>
+---
+ files/wpa_supp.sh               | 6 +++++-
+ hostapd/Makefile                | 3 +++
+ wpa_supplicant/Makefile         | 4 +++-
+ wpa_supplicant/wpa_supplicant.c | 5 +++--
+ 4 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/files/wpa_supp.sh b/files/wpa_supp.sh
+index a0b53c2..841f311 100755
+--- a/files/wpa_supp.sh
++++ b/files/wpa_supp.sh
+@@ -14,8 +14,12 @@ start()
+ 		"SLP10_C210")	/bin/echo "This is C210"
+ 			/usr/sbin/wpa_supplicant -u -t -B -d -Dwext -f/opt/usr/data/network/wpa_supplicant.log
+ 		;;
++
++		"Samsung")/bin/echo "This is Tizen TV"
++			/usr/sbin/wpa_supplicant -u -t -B -dd -O /var/run/wpa_supplicant -g/var/run/wpa_global -f/var/log/wpa_supplicant.log
++		;;
+ 		*)
+-			/usr/sbin/wpa_supplicant -u -t -B -ddd -K -f/opt/usr/data/network/wpa_supplicant.log
++			/usr/sbin/wpa_supplicant -u -t -B -dd -O /var/run/wpa_supplicant -g/var/run/wpa_global -f/var/log/wpa_supplicant.log
+ 		;;
+ 	esac
+ }
+diff --git a/hostapd/Makefile b/hostapd/Makefile
+index f0d1784..217be8c 100644
+--- a/hostapd/Makefile
++++ b/hostapd/Makefile
+@@ -78,6 +78,9 @@ endif
+ ifdef CONFIG_TIZEN_WLAN_BOARD_SPRD
+ CFLAGS += -DTIZEN_WLAN_BOARD_SPRD
+ endif
++ifdef CONFIG_TIZEN_TV_BOARD_PRD
++CFLAGS += -DTIZEN_TV_BOARD_PRD
++endif
+ CFLAGS += -I../src/drivers
+ 
+ # To force sizeof(enum) = 4
+diff --git a/wpa_supplicant/Makefile b/wpa_supplicant/Makefile
+index 32629c0..4a0d3f2 100755
+--- a/wpa_supplicant/Makefile
++++ b/wpa_supplicant/Makefile
+@@ -97,7 +97,9 @@ endif
+ ifdef CONFIG_TIZEN_WLAN_BOARD_SPRD
+ CFLAGS += -DTIZEN_WLAN_BOARD_SPRD
+ endif
+-
++ifdef CONFIG_TIZEN_TV_BOARD_PRD
++CFLAGS += -DTIZEN_TV_BOARD_PRD
++endif
+ ifndef CONFIG_OS
+ ifdef CONFIG_NATIVE_WINDOWS
+ CONFIG_OS=win32
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index 87676da..b8766b7 100755
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -4143,9 +4143,10 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
+ 	if (wpa_s->max_remain_on_chan == 0)
+ 		wpa_s->max_remain_on_chan = 1000;
+ 
+-#ifdef TIZEN_WLAN_BOARD_SPRD
++#if defined(TIZEN_WLAN_BOARD_SPRD) || defined(TIZEN_TV_BOARD_PRD)
++	wpa_dbg(wpa_s, MSG_DEBUG, "Ignore Dedicated P2P Device Flag");
+ 	wpa_s->drv_flags &= ~WPA_DRIVER_FLAGS_DEDICATED_P2P_DEVICE;
+-#endif /* TIZEN_WLAN_BOARD_SPRD */
++#endif /* TIZEN_WLAN_BOARD_SPRD || TIZEN_TV_BOARD_PRD */
+ 	/*
+ 	 * Only take p2p_mgmt parameters when P2P Device is supported.
+ 	 * Doing it here as it determines whether l2_packet_init() will be done

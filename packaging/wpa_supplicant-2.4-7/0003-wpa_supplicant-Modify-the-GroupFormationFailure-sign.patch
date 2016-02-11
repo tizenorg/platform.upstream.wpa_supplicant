@@ -1,0 +1,76 @@
+From: Yu Jiung <jiung.yu@samsung.com>
+Date: Tue, 10 Nov 2015 18:54:44 +0900
+Subject: [wpa_supplicant]Modify the GroupFormationFailure signal
+
+Description : If group removed before notifying via DBus,
+that can create the crash because of NULL pointer
+
+Change-Id: I685930ab81ce011ff5488dc1bb730f13bd86b751
+Signed-off-by: Yu jiung <jiung.yu@samsung.com>
+---
+ wpa_supplicant/dbus/dbus_new.c              | 12 +++++++++---
+ wpa_supplicant/dbus/dbus_new_handlers_p2p.c |  2 +-
+ wpa_supplicant/p2p_supplicant.c             |  4 ++--
+ 3 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/wpa_supplicant/dbus/dbus_new.c b/wpa_supplicant/dbus/dbus_new.c
+index 21b9c15..f0c6a42 100644
+--- a/wpa_supplicant/dbus/dbus_new.c
++++ b/wpa_supplicant/dbus/dbus_new.c
+@@ -1890,6 +1890,7 @@ void wpas_dbus_signal_p2p_group_formation_failure (
+ 
+ 	DBusMessage *msg;
+ 	struct wpas_dbus_priv *iface;
++	struct wpa_supplicant *parent;
+ 
+ 	iface = wpa_s->global->dbus;
+ 
+@@ -1897,10 +1898,15 @@ void wpas_dbus_signal_p2p_group_formation_failure (
+ 	if (iface == NULL)
+ 		return;
+ 
+-	if (wpa_s->p2p_mgmt)
+-		wpa_s = wpa_s->parent;
++	parent = wpa_s->parent;
++	if (parent && parent->p2p_mgmt)
++		parent = parent->parent;
+ 
+-	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
++	/* Do nothing if the parent control interface is not turned on */
++	if(parent == NULL || parent->dbus_new_path == NULL)
++		return;
++
++	msg = dbus_message_new_signal(parent->dbus_new_path,
+ 				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+ 				      "GroupFormationFailure");
+ 	if (msg == NULL)
+diff --git a/wpa_supplicant/dbus/dbus_new_handlers_p2p.c b/wpa_supplicant/dbus/dbus_new_handlers_p2p.c
+index 1c57a09..b5aea0a 100644
+--- a/wpa_supplicant/dbus/dbus_new_handlers_p2p.c
++++ b/wpa_supplicant/dbus/dbus_new_handlers_p2p.c
+@@ -1743,7 +1743,7 @@ dbus_bool_t wpas_dbus_getter_p2p_peer_groups(DBusMessageIter *iter,
+ 		wpa_s = wpa_s->p2p_dev;
+ 
+ 	wpa_s_go = wpas_get_p2p_client_iface(wpa_s, info->p2p_device_addr);
+-	if (wpa_s_go) {
++	if (wpa_s_go && wpa_s_go->dbus_groupobj_path) {
+ 		data.paths = os_calloc(1, sizeof(char *));
+ 		if (data.paths == NULL)
+ 			goto out_of_memory;
+diff --git a/wpa_supplicant/p2p_supplicant.c b/wpa_supplicant/p2p_supplicant.c
+index dcab3de..39ebbcb 100755
+--- a/wpa_supplicant/p2p_supplicant.c
++++ b/wpa_supplicant/p2p_supplicant.c
+@@ -1257,10 +1257,10 @@ static void wpas_group_formation_completed(struct wpa_supplicant *wpa_s,
+ 	if (!success) {
+ 		wpa_msg_global(wpa_s->parent, MSG_INFO,
+ 			       P2P_EVENT_GROUP_FORMATION_FAILURE);
+-		wpas_p2p_group_delete(wpa_s,
+-				      P2P_GROUP_REMOVAL_FORMATION_FAILED);
+ 		wpa_printf(MSG_INFO, "dbus: Notify Group Formation Failure");
+ 		wpas_notify_p2p_group_formation_failure(wpa_s);
++		wpas_p2p_group_delete(wpa_s,
++				      P2P_GROUP_REMOVAL_FORMATION_FAILED);
+ 		return;
+ 	}
+ 

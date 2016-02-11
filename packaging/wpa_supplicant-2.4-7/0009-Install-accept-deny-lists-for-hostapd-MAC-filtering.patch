@@ -1,0 +1,32 @@
+From: Seonah Moon <seonah1.moon@samsung.com>
+Date: Mon, 11 Jan 2016 17:00:01 +0900
+Subject: Install accept/deny lists for hostapd MAC filtering
+
+Change-Id: I0cca82009a3bad5e78befb0bf6e8caabf8c1b877
+Signed-off-by: Seonah Moon <seonah1.moon@samsung.com>
+---
+ hostapd/hostapd.accept | 3 ---
+ hostapd/hostapd.deny   | 3 ---
+ 2 files changed, 6 deletions(-)
+
+diff --git a/hostapd/hostapd.accept b/hostapd/hostapd.accept
+index 2d2a0a2..923eab6 100644
+--- a/hostapd/hostapd.accept
++++ b/hostapd/hostapd.accept
+@@ -1,6 +1,3 @@
+ # List of MAC addresses that are allowed to authenticate (IEEE 802.11)
+ # with the AP. Optional VLAN ID can be assigned for clients based on the
+ # MAC address if dynamic VLANs (hostapd.conf dynamic_vlan option) are used.
+-00:11:22:33:44:55
+-00:66:77:88:99:aa
+-00:00:22:33:44:55	1
+diff --git a/hostapd/hostapd.deny b/hostapd/hostapd.deny
+index 1616678..e4b6c09 100644
+--- a/hostapd/hostapd.deny
++++ b/hostapd/hostapd.deny
+@@ -1,5 +1,2 @@
+ # List of MAC addresses that are not allowed to authenticate (IEEE 802.11)
+ # with the AP.
+-00:20:30:40:50:60
+-00:ab:cd:ef:12:34
+-00:00:30:40:50:60
