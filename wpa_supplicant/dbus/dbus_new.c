@@ -25,6 +25,12 @@
 #include "dbus_new_handlers_p2p.h"
 #include "p2p/p2p.h"
 #include "../p2p_supplicant.h"
+#if defined TIZEN_EXT
+#include "ap/hostapd.h"
+#include "ap/sta_info.h"
+#include "ap/wpa_auth.h"
+#include "rsn_supp/wpa.h"
+#endif /* TIZEN_EXT */
 
 #ifdef CONFIG_AP /* until needed by something else */
 
@@ -1267,6 +1273,9 @@ void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 	DBusMessageIter iter, dict_iter;
 	struct wpas_dbus_priv *iface;
 	struct wpa_supplicant *parent;
+#if defined TIZEN_EXT
+	u8 ip[3 * 4];
+#endif /* TIZEN_EXT */
 
 	parent = wpa_s->parent;
 	if (parent->p2p_mgmt)
@@ -1301,14 +1310,28 @@ void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 	    !wpa_dbus_dict_append_string(&dict_iter, "role",
 					 client ? "client" : "GO") ||
 	    !wpa_dbus_dict_append_object_path(&dict_iter, "group_object",
-					      wpa_s->dbus_groupobj_path) ||
-	    !wpa_dbus_dict_close_write(&iter, &dict_iter)) {
+					      wpa_s->dbus_groupobj_path))
+		goto err;
+#if defined TIZEN_EXT
+	if(client && (wpa_sm_get_p2p_ip_addr(wpa_s->wpa, ip) == 0))
+		if(!wpa_dbus_dict_append_byte_array(&dict_iter,
+					      "IpAddr",(char *) ip, 4) ||
+				!wpa_dbus_dict_append_byte_array(&dict_iter,
+					      "IpAddrMask",(char *) ip + 4, 4) ||
+				!wpa_dbus_dict_append_byte_array(&dict_iter,
+					      "IpAddrGo",(char *) ip + 8, 4))
+			goto err;
+#endif /* TIZEN_EXT */
+	if(!wpa_dbus_dict_close_write(&iter, &dict_iter)) {
 		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
 	} else {
 		dbus_connection_send(iface->con, msg, NULL);
 		if (client)
 			peer_groups_changed(wpa_s);
 	}
+#if defined TIZEN_EXT
+err:
+#endif /* TIZEN_EXT */
 	dbus_message_unref(msg);
 }
 
@@ -1491,6 +1514,12 @@ void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 	DBusMessageIter iter;
 	char peer_obj_path[WPAS_DBUS_OBJECT_PATH_MAX], *path;
 	struct wpa_supplicant *parent;
+#if defined TIZEN_EXT
+	DBusMessageIter array_iter;
+	struct hostapd_data *hapd;
+	struct sta_info *sta;
+	u8 ip_addr[4] = {0,}, *ip = ip_addr;
+#endif /* TIZEN_EXT */
 
 	iface = wpa_s->global->dbus;
 
@@ -1507,6 +1536,13 @@ void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 	if (!parent->dbus_new_path)
 		return;
 
+#if defined TIZEN_EXT
+	if (wpa_s->ap_iface != NULL &&
+	    (hapd = wpa_s->ap_iface->bss[0]) != NULL &&
+	    (sta = ap_get_sta_p2p(hapd, peer_addr)) != NULL &&
+	    sta->wpa_sm != NULL)
+		wpa_auth_get_ip_addr(sta->wpa_sm, ip);
+#endif /* TIZEN_EXT */
 	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
 			"%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/"
 			COMPACT_MACSTR,
@@ -1521,7 +1557,16 @@ void wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 	dbus_message_iter_init_append(msg, &iter);
 	path = peer_obj_path;
 	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
-					    &path)) {
+					    &path)
+#if defined TIZEN_EXT
+			||
+			!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					    DBUS_TYPE_BYTE_AS_STRING, &array_iter) ||
+			!dbus_message_iter_append_fixed_array(&array_iter,
+					    DBUS_TYPE_BYTE, &ip, 4) ||
+			!dbus_message_iter_close_container(&iter, &array_iter)
+#endif /* TIZEN_EXT */
+			) {
 		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
 	} else {
 		dbus_connection_send(iface->con, msg, NULL);
@@ -2743,6 +2788,15 @@ static const struct wpa_dbus_method_desc wpas_dbus_interface_methods[] = {
 		  END_ARGS
 	  }
 	},
+#if defined TIZEN_EXT
+	{ "GeneratePin", WPAS_DBUS_NEW_IFACE_WPS,
+	  (WPADBusMethodHandler) wpas_dbus_handler_wps_generate_pin,
+	  {
+		  { "generated_pin", "s", ARG_OUT },
+		  END_ARGS
+	  }
+	},
+#endif /* TIZEN_EXT */
 #endif /* CONFIG_WPS */
 #ifdef CONFIG_P2P
 	{ "Find", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
@@ -3543,6 +3597,16 @@ static const struct wpa_dbus_property_desc wpas_dbus_p2p_peer_properties[] = {
 	  wpas_dbus_getter_p2p_peer_device_address,
 	  NULL
 	},
+#if defined TIZEN_EXT
+	{ "InterfaceAddress", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
+		wpas_dbus_getter_p2p_peer_interface_address,
+	  NULL
+	},
+	{ "GODeviceAddress", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
+			wpas_dbus_getter_p2p_peer_go_device_address,
+	  NULL
+	},
+#endif /* TIZEN_EXT */
 	{ "Groups", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ao",
 	  wpas_dbus_getter_p2p_peer_groups,
 	  NULL
@@ -3846,6 +3910,9 @@ static const struct wpa_dbus_signal_desc wpas_dbus_p2p_group_signals[] = {
 	{ "PeerJoined", WPAS_DBUS_NEW_IFACE_P2P_GROUP,
 	  {
 		  { "peer", "o", ARG_OUT },
+#if defined TIZEN_EXT
+		  { "ip_address", "ay", ARG_OUT },
+#endif /* TIZEN_EXT */
 		  END_ARGS
 	  }
 	},

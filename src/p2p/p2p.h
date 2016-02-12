@@ -1987,9 +1987,10 @@ u8 p2p_get_listen_channel(struct p2p_data *p2p);
 
 int p2p_set_ssid_postfix(struct p2p_data *p2p, const u8 *postfix, size_t len);
 
+#if defined TIZEN_EXT
 int p2p_get_member_in_go_dev(struct p2p_data *p2p, const u8 *dev_addr,
 			   u8 *member_in_go_dev);
-
+#endif /* TIZEN_EXT */
 int p2p_get_interface_addr(struct p2p_data *p2p, const u8 *dev_addr,
 			   u8 *iface_addr);
 int p2p_get_dev_addr(struct p2p_data *p2p, const u8 *iface_addr,

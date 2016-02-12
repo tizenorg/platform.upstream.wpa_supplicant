@@ -5614,6 +5614,22 @@ static int p2p_ctrl_group_add(struct wpa_supplicant *wpa_s, char *cmd)
 	int vht = wpa_s->conf->p2p_go_vht;
 	int ht40 = wpa_s->conf->p2p_go_ht40 || vht;
 	char *token, *context = NULL;
+#if defined TIZEN_EXT
+	char *passphrase = NULL;
+	char *pos;
+
+	pos = os_strstr(cmd, "passphrase");
+	if(pos) {
+
+		wpa_printf(MSG_DEBUG, "pos : %s", pos);
+		passphrase = pos + 11;
+		wpa_printf(MSG_DEBUG, "passphrase : %s",passphrase);
+		pos = os_strchr(passphrase, ' ');
+		if(pos != NULL)
+			*pos = '\0';
+		wpa_printf(MSG_DEBUG, "passphrase : %s",passphrase);
+	}
+#endif /* TIZEN_EXT */
 
 	while ((token = str_token(cmd, " ", &context))) {
 		if (sscanf(token, "freq=%d", &freq) == 1 ||
@@ -5638,7 +5654,11 @@ static int p2p_ctrl_group_add(struct wpa_supplicant *wpa_s, char *cmd)
 		return p2p_ctrl_group_add_persistent(wpa_s, group_id,
 						     freq, ht40, vht);
 
+#if defined TIZEN_EXT
+	return wpas_p2p_group_add(wpa_s, persistent, freq, ht40, vht, passphrase);
+#else
 	return wpas_p2p_group_add(wpa_s, persistent, freq, ht40, vht);
+#endif
 }
 
 

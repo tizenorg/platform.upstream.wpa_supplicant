@@ -301,6 +301,10 @@ DBusMessage * wpas_dbus_handler_p2p_group_add(DBusMessage *message,
 	char *iface = NULL;
 	unsigned int group_id = 0;
 	struct wpa_ssid *ssid;
+#if defined TIZEN_EXT
+	char *passphrase = NULL;
+	char path_buf[WPAS_DBUS_OBJECT_PATH_MAX], *path = path_buf;
+#endif /* TIZEN_EXT */
 
 	dbus_message_iter_init(message, &iter);
 
@@ -323,6 +327,12 @@ DBusMessage * wpas_dbus_handler_p2p_group_add(DBusMessage *message,
 			   0 &&
 			   entry.type == DBUS_TYPE_OBJECT_PATH)
 			pg_object_path = os_strdup(entry.str_value);
+#if defined TIZEN_EXT
+		else if (os_strcmp(entry.key, "passphrase") == 0 &&
+			   entry.type == DBUS_TYPE_STRING &&
+			   os_strlen(entry.str_value) > 0)
+			passphrase = os_strdup(entry.str_value);
+#endif /* TIZEN_EXT */
 		else
 			goto inv_args_clear;
 
@@ -370,11 +380,38 @@ DBusMessage * wpas_dbus_handler_p2p_group_add(DBusMessage *message,
 				"Failed to reinvoke a persistent group");
 			goto out;
 		}
+#if defined TIZEN_EXT
+	} else if (wpas_p2p_group_add(wpa_s, persistent_group, freq, 0, 0, passphrase))
+#else
 	} else if (wpas_p2p_group_add(wpa_s, persistent_group, freq, 0, 0))
+#endif /* TIZEN_EXT */
 		goto inv_args;
 
+#if defined TIZEN_EXT
+	if(wpa_s->global->p2p_group_formation) {
+		os_snprintf(path, WPAS_DBUS_OBJECT_PATH_MAX,
+			    "%s", wpa_s->global->p2p_group_formation->dbus_new_path);
+	} else {
+		os_snprintf(path, WPAS_DBUS_OBJECT_PATH_MAX,
+			    "%s", wpa_s->dbus_new_path);
+	}
+	reply = dbus_message_new_method_return(message);
+	if (reply == NULL) {
+		reply = wpas_dbus_error_no_memory(message);
+		goto out;
+	}
+	if (!dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
+				      DBUS_TYPE_INVALID)) {
+		dbus_message_unref(reply);
+		reply = wpas_dbus_error_no_memory(message);
+		goto out;
+	}
+#endif /* TIZEN_EXT */
 out:
 	os_free(pg_object_path);
+#if defined TIZEN_EXT
+	os_free(passphrase);
+#endif /* TIZEN_EXT */
 	os_free(iface);
 	return reply;
 inv_args_clear:
@@ -865,7 +902,27 @@ dbus_bool_t wpas_dbus_getter_p2p_device_config(DBusMessageIter *iter,
 					     &iter_secdev_dict_array))
 			goto err_no_mem;
 	}
+#if defined TIZEN_EXT
+	/* IP Address GO */
+	if (!wpa_dbus_dict_append_byte_array(&dict_iter, "IpAddrGO",
+					     (char *) wpa_s->conf->ip_addr_go, 4))
+		goto err_no_mem;
 
+	/* IP Address mask */
+	if (!wpa_dbus_dict_append_byte_array(&dict_iter, "IpAddrMask",
+					     (char *) wpa_s->conf->ip_addr_mask, 4))
+		goto err_no_mem;
+
+	/* IP Address Start*/
+	if (!wpa_dbus_dict_append_byte_array(&dict_iter, "IpAddrStart",
+					     (char *) wpa_s->conf->ip_addr_start, 4))
+		goto err_no_mem;
+
+	/* IP Address End*/
+	if (!wpa_dbus_dict_append_byte_array(&dict_iter, "IpAddrEnd",
+					     (char *) wpa_s->conf->ip_addr_end, 4))
+		goto err_no_mem;
+#endif /* TIZEN_EXT */
 	/* Vendor Extensions */
 	for (i = 0; i < P2P_MAX_WPS_VENDOR_EXT; i++) {
 		if (wpa_s->conf->wps_vendor_ext[i] == NULL)
@@ -1049,6 +1106,40 @@ dbus_bool_t wpas_dbus_setter_p2p_device_config(DBusMessageIter *iter,
 			wpa_s->conf->p2p_intra_bss = entry.bool_value;
 			wpa_s->conf->changed_parameters |=
 				CFG_CHANGED_P2P_INTRA_BSS;
+#if defined TIZEN_EXT
+		} else if (os_strcmp(entry.key, "IpAddrGO") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+			    entry.array_type != DBUS_TYPE_BYTE ||
+			    entry.array_len != 4)
+				goto error;
+
+			os_memcpy(wpa_s->conf->ip_addr_go,
+				  entry.bytearray_value, 4);
+		} else if (os_strcmp(entry.key, "IpAddrMask") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+			    entry.array_type != DBUS_TYPE_BYTE ||
+			    entry.array_len != 4)
+				goto error;
+
+			os_memcpy(wpa_s->conf->ip_addr_mask,
+				  entry.bytearray_value, 4);
+		} else if (os_strcmp(entry.key, "IpAddrStart") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+			    entry.array_type != DBUS_TYPE_BYTE ||
+			    entry.array_len != 4)
+				goto error;
+
+			os_memcpy(wpa_s->conf->ip_addr_start,
+				  entry.bytearray_value, 4);
+		} else if (os_strcmp(entry.key, "IpAddrEnd") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+			    entry.array_type != DBUS_TYPE_BYTE ||
+			    entry.array_len != 4)
+				goto error;
+
+			os_memcpy(wpa_s->conf->ip_addr_end,
+				  entry.bytearray_value, 4);
+#endif /* TIZEN_EXT */
 		} else if (os_strcmp(entry.key, "GroupIdle") == 0 &&
 			   entry.type == DBUS_TYPE_UINT32)
 			wpa_s->conf->p2p_group_idle = entry.uint32_value;
@@ -1728,6 +1819,33 @@ dbus_bool_t wpas_dbus_getter_p2p_peer_device_address(DBusMessageIter *iter,
 		iter, DBUS_TYPE_BYTE, (char *) info->p2p_device_addr,
 		ETH_ALEN, error);
 }
+#if defined TIZEN_EXT
+dbus_bool_t wpas_dbus_getter_p2p_peer_interface_address(DBusMessageIter *iter,
+						     DBusError *error,
+						     void *user_data)
+{
+	struct peer_handler_args *peer_args = user_data;
+	const struct p2p_peer_info *info;
+	u8 interface_address[ETH_ALEN];
+
+	info = p2p_get_peer_found(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, 0);
+	if (info == NULL) {
+		dbus_set_error(error, DBUS_ERROR_FAILED,
+			       "failed to find peer");
+		return FALSE;
+	}
+
+	if (p2p_get_interface_addr(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, interface_address) < 0) {
+		os_memset(interface_address, 0, ETH_ALEN);
+	}
+
+	return wpas_dbus_simple_array_property_getter(
+		iter, DBUS_TYPE_BYTE, (char *) interface_address,
+		ETH_ALEN, error);
+}
+#endif /* TIZEN_EXT */
 
 
 struct peer_group_data {
@@ -1832,6 +1950,33 @@ out:
 	return success;
 }
 
+#if defined TIZEN_EXT
+dbus_bool_t wpas_dbus_getter_p2p_peer_go_device_address(DBusMessageIter *iter,
+						     DBusError *error,
+						     void *user_data)
+{
+	struct peer_handler_args *peer_args = user_data;
+	const struct p2p_peer_info *info;
+	u8 member_in_go_dev[ETH_ALEN];
+
+	info = p2p_get_peer_found(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, 0);
+	if (info == NULL) {
+		dbus_set_error(error, DBUS_ERROR_FAILED,
+			       "failed to find peer");
+		return FALSE;
+	}
+
+	if (p2p_get_member_in_go_dev(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, member_in_go_dev) < 0) {
+		os_memset(member_in_go_dev, 0, ETH_ALEN);
+	}
+
+	return wpas_dbus_simple_array_property_getter(
+		iter, DBUS_TYPE_BYTE, (char *) member_in_go_dev,
+		ETH_ALEN, error);
+}
+#endif /* TIZEN_EXT */
 
 /**
  * wpas_dbus_getter_persistent_groups - Get array of persistent group objects

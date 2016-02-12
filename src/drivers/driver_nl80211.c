@@ -7355,7 +7355,6 @@ const u8 * wpa_driver_nl80211_get_macaddr(void *priv)
 
 	return bss->addr;
 }
-
 #if defined(TIZEN_WLAN_BOARD_SPRD)
 
 typedef struct {

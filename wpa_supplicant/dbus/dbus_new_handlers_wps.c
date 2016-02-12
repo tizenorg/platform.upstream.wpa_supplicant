@@ -318,6 +318,7 @@ DBusMessage * wpas_dbus_handler_wps_start(DBusMessage *message,
 	return reply;
 }
 
+#if defined TIZEN_EXT
 DBusMessage * wpas_dbus_handler_wps_generate_pin(DBusMessage *message,
 					   struct wpa_supplicant *wpa_s)
 {
@@ -344,6 +345,7 @@ DBusMessage * wpas_dbus_handler_wps_generate_pin(DBusMessage *message,
 
 	return reply;
 }
+#endif /* TIZEN_EXT */
 
 /**
  * wpas_dbus_handler_wps_cancel - Cancel ongoing WPS configuration

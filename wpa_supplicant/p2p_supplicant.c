@@ -908,6 +908,12 @@ static int wpas_p2p_group_delete(struct wpa_supplicant *wpa_s,
 	 */
 	wpa_s->global->p2p_go_wait_client.sec = 0;
 
+#ifdef TIZEN_EXT_P2P
+	/* Currently Tizen uses just one group interface.
+	 * So, group index should be decreased when group interface removed.
+	*/
+	wpa_s->parent->p2p_group_idx--;
+#endif /* TIZEN_EXT_P2P */
 	if (wpa_s->p2p_group_interface != NOT_P2P_GROUP_INTERFACE) {
 		struct wpa_global *global;
 		char *ifname;
@@ -3936,7 +3942,11 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 					P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE :
 					0, 0);
 			} else if (response_done) {
+#if defined TIZEN_EXT
+				wpas_p2p_group_add(wpa_s, 1, 0, 0, 0, NULL);
+#else
 				wpas_p2p_group_add(wpa_s, 1, 0, 0, 0);
+#endif /* TIZEN_EXT */
 			}
 
 			if (passwd_id == DEV_PW_P2PS_DEFAULT) {
@@ -4041,7 +4051,11 @@ static int wpas_prov_disc_resp_cb(void *ctx)
 			persistent_go->mode == WPAS_MODE_P2P_GO ?
 			P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE : 0, 0);
 	} else {
-		wpas_p2p_group_add(wpa_s, 1, 0, 0, 0);
+#if defined TIZEN_EXT
+				wpas_p2p_group_add(wpa_s, 1, 0, 0, 0, NULL);
+#else
+				wpas_p2p_group_add(wpa_s, 1, 0, 0, 0);
+#endif /* TIZEN_EXT */
 	}
 
 	return 1;
@@ -5754,7 +5768,11 @@ wpas_p2p_get_group_iface(struct wpa_supplicant *wpa_s, int addr_allocated,
  * i.e., without using Group Owner Negotiation.
  */
 int wpas_p2p_group_add(struct wpa_supplicant *wpa_s, int persistent_group,
+#if defined TIZEN_EXT
+		       int freq, int ht40, int vht, char *passphrase)
+#else
 		       int freq, int ht40, int vht)
+#endif /* TIZEN_EXT */
 {
 	struct p2p_go_neg_results params;
 

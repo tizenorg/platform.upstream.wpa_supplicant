@@ -6,14 +6,17 @@ ifndef CFLAGS
 CFLAGS = -MMD -O2 -Wall -g
 endif
 
-export LIBDIR ?= /usr/local/lib/
-export INCDIR ?= /usr/local/include/
-export BINDIR ?= /usr/local/sbin/
+export LIBDIR ?= /usr/lib/
+export BINDIR ?= /usr/sbin/
+export INCDIR ?= /usr/include/
 PKG_CONFIG ?= pkg-config
 
 CFLAGS += $(EXTRA_CFLAGS)
 CFLAGS += -I$(abspath ../src)
 CFLAGS += -I$(abspath ../src/utils)
+
+CFLAGS += -fPIE
+LDFLAGS += -pie
 
 -include .config
 
@@ -91,6 +94,18 @@ OBJS_c += ../src/utils/wpa_debug.o
 OBJS_c += ../src/utils/common.o
 OBJS += wmm_ac.o
 
+CFLAGS += -DTIZEN_EXT
+CFLAGS += -DTIZEN_EXT_P2P
+
+ifdef CONFIG_TIZEN_MOBILE
+CFLAGS += -DTIZEN_MOBILE
+endif
+ifdef CONFIG_TIZEN_WLAN_BOARD_SPRD
+CFLAGS += -DTIZEN_WLAN_BOARD_SPRD
+endif
+ifdef CONFIG_TIZEN_TV_BOARD_PRD
+CFLAGS += -DTIZEN_TV_BOARD_PRD
+endif
 ifndef CONFIG_OS
 ifdef CONFIG_NATIVE_WINDOWS
 CONFIG_OS=win32

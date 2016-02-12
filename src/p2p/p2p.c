@@ -4735,7 +4735,7 @@ int p2p_set_no_go_freq(struct p2p_data *p2p,
 	return 0;
 }
 
-
+#if defined TIZEN_EXT
 int p2p_get_member_in_go_dev(struct p2p_data *p2p, const u8 *dev_addr,
 			   u8 *member_in_go_dev)
 {
@@ -4746,7 +4746,7 @@ int p2p_get_member_in_go_dev(struct p2p_data *p2p, const u8 *dev_addr,
 	os_memcpy(member_in_go_dev, dev->member_in_go_dev, ETH_ALEN);
 	return 0;
 }
-
+#endif /* TIZEN_EXT */
 
 int p2p_get_interface_addr(struct p2p_data *p2p, const u8 *dev_addr,
 			   u8 *iface_addr)
