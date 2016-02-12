@@ -107,6 +107,9 @@ DBusMessage * wpas_dbus_handler_reassociate(DBusMessage *message,
 DBusMessage * wpas_dbus_handler_reattach(DBusMessage *message,
 					 struct wpa_supplicant *wpa_s);
 
+DBusMessage * wpas_dbus_handler_reconnect(DBusMessage *message,
+					  struct wpa_supplicant *wpa_s);
+
 DBusMessage * wpas_dbus_handler_remove_network(DBusMessage *message,
 					       struct wpa_supplicant *wpa_s);
 
@@ -302,10 +305,14 @@ DBusMessage * wpas_dbus_handler_wps_start(DBusMessage *message,
 					  struct wpa_supplicant *wpa_s);
 
 DBusMessage * wpas_dbus_handler_wps_cancel(DBusMessage *message,
-					  struct wpa_supplicant *wpa_s);
-
+					   struct wpa_supplicant *wpa_s);
+<<<<<<< HEAD
+#if defined TIZEN_EXT
 DBusMessage * wpas_dbus_handler_wps_generate_pin(DBusMessage *message,
 					  struct wpa_supplicant *wpa_s);
+#endif /* TIZEN_EXT */
+=======
+>>>>>>> upstream
 
 dbus_bool_t wpas_dbus_getter_process_credentials(DBusMessageIter *iter,
 	DBusError *error, void *user_data);
