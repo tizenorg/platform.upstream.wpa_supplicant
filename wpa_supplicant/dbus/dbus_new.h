@@ -145,7 +145,6 @@ void wpas_dbus_signal_network_request(struct wpa_supplicant *wpa_s,
 				      enum wpa_ctrl_req_type rtype,
 				      const char *default_text);
 void wpas_dbus_signal_scan_done(struct wpa_supplicant *wpa_s, int success);
-void wpas_dbus_signal_find_stopped(struct wpa_supplicant *wpa_s);
 void wpas_dbus_signal_wps_cred(struct wpa_supplicant *wpa_s,
 			       const struct wps_credential *cred);
 void wpas_dbus_signal_wps_event_m2d(struct wpa_supplicant *wpa_s,
@@ -153,6 +152,7 @@ void wpas_dbus_signal_wps_event_m2d(struct wpa_supplicant *wpa_s,
 void wpas_dbus_signal_wps_event_fail(struct wpa_supplicant *wpa_s,
 				     struct wps_event_fail *fail);
 void wpas_dbus_signal_wps_event_success(struct wpa_supplicant *wpa_s);
+void wpas_dbus_signal_wps_event_pbc_overlap(struct wpa_supplicant *wpa_s);
 int wpas_dbus_register_network(struct wpa_supplicant *wpa_s,
 			       struct wpa_ssid *ssid);
 int wpas_dbus_unregister_network(struct wpa_supplicant *wpa_s, int nid);
@@ -169,6 +169,7 @@ void wpas_dbus_signal_debug_timestamp_changed(struct wpa_global *global);
 void wpas_dbus_signal_debug_show_keys_changed(struct wpa_global *global);
 
 int wpas_dbus_register_peer(struct wpa_supplicant *wpa_s, const u8 *dev_addr);
+void wpas_dbus_signal_p2p_find_stopped(struct wpa_supplicant *wpa_s);
 void wpas_dbus_signal_peer_device_found(struct wpa_supplicant *wpa_s,
 					   const u8 *dev_addr);
 int wpas_dbus_unregister_peer(struct wpa_supplicant *wpa_s,
@@ -185,10 +186,13 @@ void wpas_dbus_signal_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 					      u16 config_methods,
 					      unsigned int generated_pin);
 void wpas_dbus_signal_p2p_go_neg_req(struct wpa_supplicant *wpa_s,
-				     const u8 *src, u16 dev_passwd_id);
+				     const u8 *src, u16 dev_passwd_id,
+				     u8 go_intent);
 void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 					const struct wpa_ssid *ssid,
 					int client, int network_id);
+void wpas_dbus_signal_p2p_group_formation_failure(struct wpa_supplicant *wpa_s,
+						  const char *reason);
 void wpas_dbus_register_p2p_group(struct wpa_supplicant *wpa_s,
 				  struct wpa_ssid *ssid);
 void wpas_dbus_signal_p2p_go_neg_resp(struct wpa_supplicant *wpa_s,
@@ -229,10 +233,10 @@ void wpas_dbus_signal_sta_authorized(struct wpa_supplicant *wpa_s,
 				     const u8 *sta);
 void wpas_dbus_signal_sta_deauthorized(struct wpa_supplicant *wpa_s,
 				       const u8 *sta);
-void wpas_dbus_signal_p2p_group_formation_failure (struct wpa_supplicant *wpa_s);
 void wpas_dbus_signal_p2p_invitation_received(struct wpa_supplicant *wpa_s,
-					    const u8 *sa,const u8 *dev_add,const u8 *bssid,
-					    int id, int op_freq);
+					      const u8 *sa, const u8 *dev_addr,
+					      const u8 *bssid, int id,
+					      int op_freq);
 
 #else /* CONFIG_CTRL_IFACE_DBUS_NEW */
 
@@ -296,6 +300,11 @@ static inline void wpas_dbus_signal_wps_event_fail(
 }
 
 static inline void wpas_dbus_signal_wps_event_success(
+	struct wpa_supplicant *wpa_s)
+{
+}
+
+static inline void wpas_dbus_signal_wps_event_pbc_overlap(
 	struct wpa_supplicant *wpa_s)
 {
 }
@@ -382,10 +391,10 @@ wpas_dbus_signal_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 {
 }
 
-static inline void wpas_dbus_signal_p2p_go_neg_req(
-				struct wpa_supplicant *wpa_s,
-				const u8 *src,
-				u16 dev_passwd_id)
+static inline void wpas_dbus_signal_p2p_go_neg_req(struct wpa_supplicant *wpa_s,
+						   const u8 *src,
+						   u16 dev_passwd_id,
+						   u8 go_intent)
 {
 }
 
@@ -393,6 +402,12 @@ static inline void
 wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 				   const struct wpa_ssid *ssid,
 				   int client, int network_id)
+{
+}
+
+static inline void
+wpas_dbus_signal_p2p_group_formation_failure(struct wpa_supplicant *wpa_s,
+					     const char *reason)
 {
 }
 
@@ -465,6 +480,11 @@ wpas_dbus_signal_p2p_peer_joined(struct wpa_supplicant *wpa_s,
 }
 
 static inline void
+wpas_dbus_signal_p2p_find_stopped(struct wpa_supplicant *wpa_s)
+{
+}
+
+static inline void
 wpas_dbus_signal_peer_device_found(struct wpa_supplicant *wpa_s,
 				   const u8 *dev_addr)
 {
@@ -521,6 +541,14 @@ void wpas_dbus_signal_sta_authorized(struct wpa_supplicant *wpa_s,
 static inline
 void wpas_dbus_signal_sta_deauthorized(struct wpa_supplicant *wpa_s,
 				       const u8 *sta)
+{
+}
+
+static inline
+void wpas_dbus_signal_p2p_invitation_received(struct wpa_supplicant *wpa_s,
+					      const u8 *sa, const u8 *dev_addr,
+					      const u8 *bssid, int id,
+					      int op_freq)
 {
 }
 

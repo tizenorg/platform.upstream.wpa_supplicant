@@ -107,6 +107,9 @@ DBusMessage * wpas_dbus_handler_reassociate(DBusMessage *message,
 DBusMessage * wpas_dbus_handler_reattach(DBusMessage *message,
 					 struct wpa_supplicant *wpa_s);
 
+DBusMessage * wpas_dbus_handler_reconnect(DBusMessage *message,
+					  struct wpa_supplicant *wpa_s);
+
 DBusMessage * wpas_dbus_handler_remove_network(DBusMessage *message,
 					       struct wpa_supplicant *wpa_s);
 
@@ -130,16 +133,6 @@ DBusMessage * wpas_dbus_handler_remove_blob(DBusMessage *message,
 
 DBusMessage * wpas_dbus_handler_set_pkcs11_engine_and_module_path(
 	DBusMessage *message, struct wpa_supplicant *wpa_s);
-
-#if defined TIZEN_EXT
-/* Extend to get/set hs20(passpoint) on/off */
-dbus_bool_t wpas_dbus_getter_passpoint(DBusMessageIter *iter,
-					 DBusError *error,
-					 void *user_data);
-dbus_bool_t wpas_dbus_setter_passpoint(DBusMessageIter *iter,
-					 DBusError *error,
-					 void *user_data);
-#endif
 
 DBusMessage * wpas_dbus_handler_flush_bss(DBusMessage *message,
 					  struct wpa_supplicant *wpa_s);
@@ -302,10 +295,7 @@ DBusMessage * wpas_dbus_handler_wps_start(DBusMessage *message,
 					  struct wpa_supplicant *wpa_s);
 
 DBusMessage * wpas_dbus_handler_wps_cancel(DBusMessage *message,
-					  struct wpa_supplicant *wpa_s);
-
-DBusMessage * wpas_dbus_handler_wps_generate_pin(DBusMessage *message,
-					  struct wpa_supplicant *wpa_s);
+					   struct wpa_supplicant *wpa_s);
 
 dbus_bool_t wpas_dbus_getter_process_credentials(DBusMessageIter *iter,
 	DBusError *error, void *user_data);
