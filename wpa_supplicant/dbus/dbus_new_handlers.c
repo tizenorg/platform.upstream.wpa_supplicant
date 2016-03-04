@@ -716,9 +716,9 @@ DBusMessage * wpas_dbus_handler_get_interface(DBusMessage *message,
  *
  * Getter for "DebugLevel" property.
  */
-dbus_bool_t wpas_dbus_getter_debug_level(DBusMessageIter *iter,
-					 DBusError *error,
-					 void *user_data)
+dbus_bool_t wpas_dbus_getter_debug_level(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	const char *str;
 	int idx = wpa_debug_level;
@@ -742,9 +742,9 @@ dbus_bool_t wpas_dbus_getter_debug_level(DBusMessageIter *iter,
  *
  * Getter for "DebugTimestamp" property.
  */
-dbus_bool_t wpas_dbus_getter_debug_timestamp(DBusMessageIter *iter,
-					     DBusError *error,
-					     void *user_data)
+dbus_bool_t wpas_dbus_getter_debug_timestamp(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	return wpas_dbus_simple_property_getter(iter, DBUS_TYPE_BOOLEAN,
 						&wpa_debug_timestamp, error);
@@ -761,9 +761,9 @@ dbus_bool_t wpas_dbus_getter_debug_timestamp(DBusMessageIter *iter,
  *
  * Getter for "DebugShowKeys" property.
  */
-dbus_bool_t wpas_dbus_getter_debug_show_keys(DBusMessageIter *iter,
-					     DBusError *error,
-					     void *user_data)
+dbus_bool_t wpas_dbus_getter_debug_show_keys(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	return wpas_dbus_simple_property_getter(iter, DBUS_TYPE_BOOLEAN,
 						&wpa_debug_show_keys, error);
@@ -779,8 +779,9 @@ dbus_bool_t wpas_dbus_getter_debug_show_keys(DBusMessageIter *iter,
  *
  * Setter for "DebugLevel" property.
  */
-dbus_bool_t wpas_dbus_setter_debug_level(DBusMessageIter *iter,
-					 DBusError *error, void *user_data)
+dbus_bool_t wpas_dbus_setter_debug_level(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_global *global = user_data;
 	const char *str = NULL;
@@ -817,9 +818,9 @@ dbus_bool_t wpas_dbus_setter_debug_level(DBusMessageIter *iter,
  *
  * Setter for "DebugTimestamp" property.
  */
-dbus_bool_t wpas_dbus_setter_debug_timestamp(DBusMessageIter *iter,
-					     DBusError *error,
-					     void *user_data)
+dbus_bool_t wpas_dbus_setter_debug_timestamp(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_global *global = user_data;
 	dbus_bool_t val;
@@ -843,9 +844,9 @@ dbus_bool_t wpas_dbus_setter_debug_timestamp(DBusMessageIter *iter,
  *
  * Setter for "DebugShowKeys" property.
  */
-dbus_bool_t wpas_dbus_setter_debug_show_keys(DBusMessageIter *iter,
-					     DBusError *error,
-					     void *user_data)
+dbus_bool_t wpas_dbus_setter_debug_show_keys(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_global *global = user_data;
 	dbus_bool_t val;
@@ -872,9 +873,9 @@ dbus_bool_t wpas_dbus_setter_debug_show_keys(DBusMessageIter *iter,
  * by dbus clients to return list of registered interfaces objects
  * paths
  */
-dbus_bool_t wpas_dbus_getter_interfaces(DBusMessageIter *iter,
-					DBusError *error,
-					void *user_data)
+dbus_bool_t wpas_dbus_getter_interfaces(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_global *global = user_data;
 	struct wpa_supplicant *wpa_s;
@@ -917,8 +918,9 @@ dbus_bool_t wpas_dbus_getter_interfaces(DBusMessageIter *iter,
  * Getter for "EapMethods" property. Handles requests
  * by dbus clients to return list of strings with supported EAP methods
  */
-dbus_bool_t wpas_dbus_getter_eap_methods(DBusMessageIter *iter,
-					 DBusError *error, void *user_data)
+dbus_bool_t wpas_dbus_getter_eap_methods(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	char **eap_methods;
 	size_t num_items = 0;
@@ -953,9 +955,9 @@ dbus_bool_t wpas_dbus_getter_eap_methods(DBusMessageIter *iter,
  * return a list of strings with supported capabilities like AP, RSN IBSS,
  * and P2P that are determined at compile time.
  */
-dbus_bool_t wpas_dbus_getter_global_capabilities(DBusMessageIter *iter,
-						 DBusError *error,
-						 void *user_data)
+dbus_bool_t wpas_dbus_getter_global_capabilities(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	const char *capabilities[5] = { NULL, NULL, NULL, NULL, NULL };
 	size_t num_items = 0;
@@ -2343,8 +2345,9 @@ DBusMessage * wpas_dbus_handler_set_pkcs11_engine_and_module_path(
  *
  * Getter for "Capabilities" property of an interface.
  */
-dbus_bool_t wpas_dbus_getter_capabilities(DBusMessageIter *iter,
-					  DBusError *error, void *user_data)
+dbus_bool_t wpas_dbus_getter_capabilities(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	struct wpa_driver_capa capa;
@@ -2634,8 +2637,9 @@ nomem:
  *
  * Getter for "State" property.
  */
-dbus_bool_t wpas_dbus_getter_state(DBusMessageIter *iter, DBusError *error,
-				   void *user_data)
+dbus_bool_t wpas_dbus_getter_state(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *str_state;
@@ -2674,8 +2678,9 @@ dbus_bool_t wpas_dbus_getter_state(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "scanning" property.
  */
-dbus_bool_t wpas_dbus_getter_scanning(DBusMessageIter *iter, DBusError *error,
-				      void *user_data)
+dbus_bool_t wpas_dbus_getter_scanning(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_bool_t scanning = wpa_s->scanning ? TRUE : FALSE;
@@ -2694,8 +2699,9 @@ dbus_bool_t wpas_dbus_getter_scanning(DBusMessageIter *iter, DBusError *error,
  *
  * Getter function for "ApScan" property.
  */
-dbus_bool_t wpas_dbus_getter_ap_scan(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_ap_scan(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_uint32_t ap_scan = wpa_s->conf->ap_scan;
@@ -2714,8 +2720,9 @@ dbus_bool_t wpas_dbus_getter_ap_scan(DBusMessageIter *iter, DBusError *error,
  *
  * Setter function for "ApScan" property.
  */
-dbus_bool_t wpas_dbus_setter_ap_scan(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_setter_ap_scan(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_uint32_t ap_scan;
@@ -2743,9 +2750,9 @@ dbus_bool_t wpas_dbus_setter_ap_scan(DBusMessageIter *iter, DBusError *error,
  *
  * Getter function for "FastReauth" property.
  */
-dbus_bool_t wpas_dbus_getter_fast_reauth(DBusMessageIter *iter,
-					 DBusError *error,
-					 void *user_data)
+dbus_bool_t wpas_dbus_getter_fast_reauth(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_bool_t fast_reauth = wpa_s->conf->fast_reauth ? TRUE : FALSE;
@@ -2765,9 +2772,9 @@ dbus_bool_t wpas_dbus_getter_fast_reauth(DBusMessageIter *iter,
  *
  * Setter function for "FastReauth" property.
  */
-dbus_bool_t wpas_dbus_setter_fast_reauth(DBusMessageIter *iter,
-				     DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_setter_fast_reauth(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_bool_t fast_reauth;
@@ -2791,9 +2798,9 @@ dbus_bool_t wpas_dbus_setter_fast_reauth(DBusMessageIter *iter,
  * Getter for "DisconnectReason" property.  The reason is negative if it is
  * locally generated.
  */
-dbus_bool_t wpas_dbus_getter_disconnect_reason(DBusMessageIter *iter,
-					       DBusError *error,
-					       void *user_data)
+dbus_bool_t wpas_dbus_getter_disconnect_reason(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_int32_t reason = wpa_s->disconnect_reason;
@@ -2812,9 +2819,9 @@ dbus_bool_t wpas_dbus_getter_disconnect_reason(DBusMessageIter *iter,
  *
  * Getter function for "BSSExpireAge" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_expire_age(DBusMessageIter *iter,
-					    DBusError *error,
-					    void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_expire_age(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_uint32_t expire_age = wpa_s->conf->bss_expiration_age;
@@ -2833,9 +2840,9 @@ dbus_bool_t wpas_dbus_getter_bss_expire_age(DBusMessageIter *iter,
  *
  * Setter function for "BSSExpireAge" property.
  */
-dbus_bool_t wpas_dbus_setter_bss_expire_age(DBusMessageIter *iter,
-					    DBusError *error,
-					    void *user_data)
+dbus_bool_t wpas_dbus_setter_bss_expire_age(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_uint32_t expire_age;
@@ -2862,9 +2869,9 @@ dbus_bool_t wpas_dbus_setter_bss_expire_age(DBusMessageIter *iter,
  *
  * Getter function for "BSSExpireCount" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_expire_count(DBusMessageIter *iter,
-					      DBusError *error,
-					      void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_expire_count(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_uint32_t expire_count = wpa_s->conf->bss_expiration_scan_count;
@@ -2883,9 +2890,9 @@ dbus_bool_t wpas_dbus_getter_bss_expire_count(DBusMessageIter *iter,
  *
  * Setter function for "BSSExpireCount" property.
  */
-dbus_bool_t wpas_dbus_setter_bss_expire_count(DBusMessageIter *iter,
-					      DBusError *error,
-					      void *user_data)
+dbus_bool_t wpas_dbus_setter_bss_expire_count(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_uint32_t expire_count;
@@ -2912,8 +2919,9 @@ dbus_bool_t wpas_dbus_setter_bss_expire_count(DBusMessageIter *iter,
  *
  * Getter function for "Country" property.
  */
-dbus_bool_t wpas_dbus_getter_country(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_country(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	char country[3];
@@ -2937,8 +2945,9 @@ dbus_bool_t wpas_dbus_getter_country(DBusMessageIter *iter, DBusError *error,
  *
  * Setter function for "Country" property.
  */
-dbus_bool_t wpas_dbus_setter_country(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_setter_country(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *country;
@@ -2975,9 +2984,9 @@ dbus_bool_t wpas_dbus_setter_country(DBusMessageIter *iter, DBusError *error,
  *
  * Getter function for "ScanInterval" property.
  */
-dbus_bool_t wpas_dbus_getter_scan_interval(DBusMessageIter *iter,
-					   DBusError *error,
-					   void *user_data)
+dbus_bool_t wpas_dbus_getter_scan_interval(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_int32_t scan_interval = wpa_s->scan_interval;
@@ -2996,9 +3005,9 @@ dbus_bool_t wpas_dbus_getter_scan_interval(DBusMessageIter *iter,
  *
  * Setter function for "ScanInterval" property.
  */
-dbus_bool_t wpas_dbus_setter_scan_interval(DBusMessageIter *iter,
-					   DBusError *error,
-					   void *user_data)
+dbus_bool_t wpas_dbus_setter_scan_interval(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	dbus_int32_t scan_interval;
@@ -3025,8 +3034,9 @@ dbus_bool_t wpas_dbus_setter_scan_interval(DBusMessageIter *iter,
  *
  * Getter for "Ifname" property.
  */
-dbus_bool_t wpas_dbus_getter_ifname(DBusMessageIter *iter, DBusError *error,
-				    void *user_data)
+dbus_bool_t wpas_dbus_getter_ifname(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *ifname = wpa_s->ifname;
@@ -3045,8 +3055,9 @@ dbus_bool_t wpas_dbus_getter_ifname(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "Driver" property.
  */
-dbus_bool_t wpas_dbus_getter_driver(DBusMessageIter *iter, DBusError *error,
-				    void *user_data)
+dbus_bool_t wpas_dbus_getter_driver(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *driver;
@@ -3074,9 +3085,9 @@ dbus_bool_t wpas_dbus_getter_driver(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "CurrentBSS" property.
  */
-dbus_bool_t wpas_dbus_getter_current_bss(DBusMessageIter *iter,
-					 DBusError *error,
-					 void *user_data)
+dbus_bool_t wpas_dbus_getter_current_bss(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	char path_buf[WPAS_DBUS_OBJECT_PATH_MAX], *bss_obj_path = path_buf;
@@ -3102,9 +3113,9 @@ dbus_bool_t wpas_dbus_getter_current_bss(DBusMessageIter *iter,
  *
  * Getter for "CurrentNetwork" property.
  */
-dbus_bool_t wpas_dbus_getter_current_network(DBusMessageIter *iter,
-					     DBusError *error,
-					     void *user_data)
+dbus_bool_t wpas_dbus_getter_current_network(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	char path_buf[WPAS_DBUS_OBJECT_PATH_MAX], *net_obj_path = path_buf;
@@ -3130,9 +3141,9 @@ dbus_bool_t wpas_dbus_getter_current_network(DBusMessageIter *iter,
  *
  * Getter for "CurrentAuthMode" property.
  */
-dbus_bool_t wpas_dbus_getter_current_auth_mode(DBusMessageIter *iter,
-					       DBusError *error,
-					       void *user_data)
+dbus_bool_t wpas_dbus_getter_current_auth_mode(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *eap_mode;
@@ -3167,9 +3178,9 @@ dbus_bool_t wpas_dbus_getter_current_auth_mode(DBusMessageIter *iter,
  *
  * Getter for "BridgeIfname" property.
  */
-dbus_bool_t wpas_dbus_getter_bridge_ifname(DBusMessageIter *iter,
-					   DBusError *error,
-					   void *user_data)
+dbus_bool_t wpas_dbus_getter_bridge_ifname(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *bridge_ifname = wpa_s->bridge_ifname;
@@ -3188,8 +3199,9 @@ dbus_bool_t wpas_dbus_getter_bridge_ifname(DBusMessageIter *iter,
  *
  * Getter for "BSSs" property.
  */
-dbus_bool_t wpas_dbus_getter_bsss(DBusMessageIter *iter, DBusError *error,
-				  void *user_data)
+dbus_bool_t wpas_dbus_getter_bsss(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	struct wpa_bss *bss;
@@ -3245,8 +3257,9 @@ out:
  *
  * Getter for "Networks" property.
  */
-dbus_bool_t wpas_dbus_getter_networks(DBusMessageIter *iter, DBusError *error,
-				      void *user_data)
+dbus_bool_t wpas_dbus_getter_networks(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	struct wpa_ssid *ssid;
@@ -3308,9 +3321,9 @@ out:
  *
  * Getter for "PKCS11EnginePath" property.
  */
-dbus_bool_t wpas_dbus_getter_pkcs11_engine_path(DBusMessageIter *iter,
-						DBusError *error,
-						void *user_data)
+dbus_bool_t wpas_dbus_getter_pkcs11_engine_path(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *pkcs11_engine_path;
@@ -3333,9 +3346,9 @@ dbus_bool_t wpas_dbus_getter_pkcs11_engine_path(DBusMessageIter *iter,
  *
  * Getter for "PKCS11ModulePath" property.
  */
-dbus_bool_t wpas_dbus_getter_pkcs11_module_path(DBusMessageIter *iter,
-						DBusError *error,
-						void *user_data)
+dbus_bool_t wpas_dbus_getter_pkcs11_module_path(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	const char *pkcs11_module_path;
@@ -3358,8 +3371,9 @@ dbus_bool_t wpas_dbus_getter_pkcs11_module_path(DBusMessageIter *iter,
  *
  * Getter for "Blobs" property.
  */
-dbus_bool_t wpas_dbus_getter_blobs(DBusMessageIter *iter, DBusError *error,
-				   void *user_data)
+dbus_bool_t wpas_dbus_getter_blobs(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct wpa_supplicant *wpa_s = user_data;
 	DBusMessageIter variant_iter, dict_iter, entry_iter, array_iter;
@@ -3437,8 +3451,9 @@ static struct wpa_bss * get_bss_helper(struct bss_handler_args *args,
  *
  * Getter for "BSSID" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_bssid(DBusMessageIter *iter, DBusError *error,
-				       void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_bssid(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3462,8 +3477,9 @@ dbus_bool_t wpas_dbus_getter_bss_bssid(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "SSID" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_ssid(DBusMessageIter *iter, DBusError *error,
-				      void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_ssid(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3487,8 +3503,9 @@ dbus_bool_t wpas_dbus_getter_bss_ssid(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "Privacy" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_privacy(DBusMessageIter *iter,
-					 DBusError *error, void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_privacy(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3513,8 +3530,9 @@ dbus_bool_t wpas_dbus_getter_bss_privacy(DBusMessageIter *iter,
  *
  * Getter for "Mode" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_mode(DBusMessageIter *iter, DBusError *error,
-				      void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_mode(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3554,8 +3572,9 @@ dbus_bool_t wpas_dbus_getter_bss_mode(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "Level" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_signal(DBusMessageIter *iter,
-					DBusError *error, void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_signal(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3580,8 +3599,9 @@ dbus_bool_t wpas_dbus_getter_bss_signal(DBusMessageIter *iter,
  *
  * Getter for "Frequency" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_frequency(DBusMessageIter *iter,
-					   DBusError *error, void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_frequency(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3612,8 +3632,9 @@ static int cmp_u8s_desc(const void *a, const void *b)
  *
  * Getter for "Rates" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_rates(DBusMessageIter *iter,
-				       DBusError *error, void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_rates(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3652,9 +3673,9 @@ dbus_bool_t wpas_dbus_getter_bss_rates(DBusMessageIter *iter,
 }
 
 
-static dbus_bool_t wpas_dbus_get_bss_security_prop(DBusMessageIter *iter,
-						   struct wpa_ie_data *ie_data,
-						   DBusError *error)
+static dbus_bool_t wpas_dbus_get_bss_security_prop(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, struct wpa_ie_data *ie_data, DBusError *error)
 {
 	DBusMessageIter iter_dict, variant_iter;
 	const char *group;
@@ -3785,8 +3806,9 @@ nomem:
  *
  * Getter for "WPA" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_wpa(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_wpa(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3805,7 +3827,7 @@ dbus_bool_t wpas_dbus_getter_bss_wpa(DBusMessageIter *iter, DBusError *error,
 		return FALSE;
 	}
 
-	return wpas_dbus_get_bss_security_prop(iter, &wpa_data, error);
+	return wpas_dbus_get_bss_security_prop(property_desc, iter, &wpa_data, error);
 }
 
 
@@ -3818,8 +3840,9 @@ dbus_bool_t wpas_dbus_getter_bss_wpa(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "RSN" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_rsn(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_rsn(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3838,7 +3861,7 @@ dbus_bool_t wpas_dbus_getter_bss_rsn(DBusMessageIter *iter, DBusError *error,
 		return FALSE;
 	}
 
-	return wpas_dbus_get_bss_security_prop(iter, &wpa_data, error);
+	return wpas_dbus_get_bss_security_prop(property_desc, iter, &wpa_data, error);
 }
 
 
@@ -3851,8 +3874,9 @@ dbus_bool_t wpas_dbus_getter_bss_rsn(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "WPS" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_wps(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_wps(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3907,8 +3931,9 @@ nomem:
  *
  * Getter for "IEs" property.
  */
-dbus_bool_t wpas_dbus_getter_bss_ies(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_ies(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3932,8 +3957,9 @@ dbus_bool_t wpas_dbus_getter_bss_ies(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for BSS age
  */
-dbus_bool_t wpas_dbus_getter_bss_age(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_bss_age(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct bss_handler_args *args = user_data;
 	struct wpa_bss *res;
@@ -3961,8 +3987,9 @@ dbus_bool_t wpas_dbus_getter_bss_age(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "enabled" property of a configured network.
  */
-dbus_bool_t wpas_dbus_getter_enabled(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_getter_enabled(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct network_handler_args *net = user_data;
 	dbus_bool_t enabled = net->ssid->disabled ? FALSE : TRUE;
@@ -3981,8 +4008,9 @@ dbus_bool_t wpas_dbus_getter_enabled(DBusMessageIter *iter, DBusError *error,
  *
  * Setter for "Enabled" property of a configured network.
  */
-dbus_bool_t wpas_dbus_setter_enabled(DBusMessageIter *iter, DBusError *error,
-				     void *user_data)
+dbus_bool_t wpas_dbus_setter_enabled(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct network_handler_args *net = user_data;
 	struct wpa_supplicant *wpa_s;
@@ -4014,9 +4042,9 @@ dbus_bool_t wpas_dbus_setter_enabled(DBusMessageIter *iter, DBusError *error,
  *
  * Getter for "Properties" property of a configured network.
  */
-dbus_bool_t wpas_dbus_getter_network_properties(DBusMessageIter *iter,
-						DBusError *error,
-						void *user_data)
+dbus_bool_t wpas_dbus_getter_network_properties(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct network_handler_args *net = user_data;
 	DBusMessageIter	variant_iter, dict_iter;
@@ -4076,9 +4104,9 @@ out:
  *
  * Setter for "Properties" property of a configured network.
  */
-dbus_bool_t wpas_dbus_setter_network_properties(DBusMessageIter *iter,
-						DBusError *error,
-						void *user_data)
+dbus_bool_t wpas_dbus_setter_network_properties(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
 	struct network_handler_args *net = user_data;
 	struct wpa_ssid *ssid = net->ssid;
