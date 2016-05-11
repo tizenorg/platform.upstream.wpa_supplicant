@@ -52,6 +52,7 @@ make %{?_smp_mflags} -C hostapd all
 
 %install
 mkdir -p %{buildroot}%{_sbindir}/systemd/
+mkdir -p %{buildroot}/tmp/
 #mkdir -p %{buildroot}%{_sbindir}/dbus/
 
 cp -v wpa_supplicant/wpa_supplicant %{buildroot}%{_sbindir}/
@@ -68,6 +69,7 @@ cp -v hostapd/hostapd.conf %{buildroot}%{_sysconfdir}/wpa_supplicant/hostapd.con
 # hostapd whilte/block list for MAC filtering
 cp -v hostapd/hostapd.accept %{buildroot}%{_sysconfdir}/hostapd.accept
 cp -v hostapd/hostapd.deny %{buildroot}%{_sysconfdir}/hostapd.deny
+cp -v hostapd/.hostapd_tmp %{buildroot}/tmp/.hostapd_tmp
 
 # D-Bus
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d/
@@ -92,7 +94,21 @@ rm -rf %{buildroot}%{_sbindir}/systemd/
 #rm -rf %{buildroot}%{_sbindir}/dbus/
 rm -rf %{buildroot}%{_sbindir}/wpa_passphrase
 
-%post -p /sbin/ldconfig
+%post 
+/sbin/ldconfig
+# Access control for hostapd accept/deny list
+chgrp priv_tethering_admin %{_sysconfdir}/hostapd.accept
+chmod g+rwX %{_sysconfdir}/hostapd.accept
+chmod o= %{_sysconfdir}/hostapd.accept
+chsmack -a "*" %{_sysconfdir}/hostapd.accept
+chgrp priv_tethering_admin %{_sysconfdir}/hostapd.deny
+chmod g+rwX %{_sysconfdir}/hostapd.deny
+chmod o= %{_sysconfdir}/hostapd.deny
+chsmack -a "*" %{_sysconfdir}/hostapd.deny
+chgrp priv_tethering_admin /tmp/.hostapd_tmp
+chmod g+rwX /tmp/.hostapd_tmp
+chmod o= /tmp/.hostapd_tmp
+chsmack -a "*" /tmp/.hostapd_tmp
 
 %postun -p /sbin/ldconfig
 
@@ -105,6 +121,7 @@ rm -rf %{buildroot}%{_sbindir}/wpa_passphrase
 %{_sbindir}/hostapd_cli
 %{_sysconfdir}/hostapd.accept
 %{_sysconfdir}/hostapd.deny
+/tmp/.hostapd_tmp
 %attr(500,root,root) %{_sbindir}/wpa_supp.sh
 %attr(644,-,-) %{_sysconfdir}/dbus-1/system.d/*.conf
 #%attr(644,-,-) %{_datadir}/dbus-1/services/*.service
