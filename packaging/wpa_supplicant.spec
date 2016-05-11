@@ -13,6 +13,7 @@ BuildRequires: pkgconfig(libssl)
 BuildRequires: pkgconfig(libcrypto)
 BuildRequires: pkgconfig(dbus-1)
 BuildRequires: pkgconfig(libnl-2.0)
+BuildRequires:  pkgconfig(libtzplatform-config)
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 
@@ -52,6 +53,7 @@ make %{?_smp_mflags} -C hostapd all
 
 %install
 mkdir -p %{buildroot}%{_sbindir}/systemd/
+mkdir -p %{buildroot}%{TZ_SYS_VAR}/lib/hostapd
 #mkdir -p %{buildroot}%{_sbindir}/dbus/
 
 cp -v wpa_supplicant/wpa_supplicant %{buildroot}%{_sbindir}/
@@ -66,8 +68,9 @@ cp -v wpa_supplicant/wpa_supplicant.conf %{buildroot}%{_sysconfdir}/wpa_supplica
 cp -v hostapd/hostapd.conf %{buildroot}%{_sysconfdir}/wpa_supplicant/hostapd.conf
 
 # hostapd whilte/block list for MAC filtering
-cp -v hostapd/hostapd.accept %{buildroot}%{_sysconfdir}/hostapd.accept
-cp -v hostapd/hostapd.deny %{buildroot}%{_sysconfdir}/hostapd.deny
+cp -v hostapd/hostapd.accept %{buildroot}%{TZ_SYS_VAR}/lib/hostapd/hostapd.accept
+cp -v hostapd/hostapd.deny %{buildroot}%{TZ_SYS_VAR}/lib/hostapd/hostapd.deny
+cp -v hostapd/.hostapd_tmp %{buildroot}%{TZ_SYS_VAR}/lib/hostapd/.hostapd_tmp
 
 # D-Bus
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d/
@@ -92,7 +95,21 @@ rm -rf %{buildroot}%{_sbindir}/systemd/
 #rm -rf %{buildroot}%{_sbindir}/dbus/
 rm -rf %{buildroot}%{_sbindir}/wpa_passphrase
 
-%post -p /sbin/ldconfig
+%post
+/sbin/ldconfig
+# Access control for hostapd accept/deny list
+chgrp priv_tethering_admin %{TZ_SYS_VAR}/lib/hostapd/hostapd.accept
+chmod g+rwX %{TZ_SYS_VAR}/lib/hostapd/hostapd.accept
+chmod o= %{TZ_SYS_VAR}/lib/hostapd/hostapd.accept
+chsmack -a "*" %{TZ_SYS_VAR}/lib/hostapd/hostapd.accept
+chgrp priv_tethering_admin %{TZ_SYS_VAR}/lib/hostapd/hostapd.deny
+chmod g+rwX %{TZ_SYS_VAR}/lib/hostapd/hostapd.deny
+chmod o= %{TZ_SYS_VAR}/lib/hostapd/hostapd.deny
+chsmack -a "*" %{TZ_SYS_VAR}/lib/hostapd/hostapd.deny
+chgrp priv_tethering_admin %{TZ_SYS_VAR}/lib/hostapd/.hostapd_tmp
+chmod g+rwX %{TZ_SYS_VAR}/lib/hostapd/.hostapd_tmp
+chmod o= %{TZ_SYS_VAR}/lib/hostapd/.hostapd_tmp
+chsmack -a "*" %{TZ_SYS_VAR}/lib/hostapd/.hostapd_tmp
 
 %postun -p /sbin/ldconfig
 
@@ -103,8 +120,9 @@ rm -rf %{buildroot}%{_sbindir}/wpa_passphrase
 %{_sbindir}/wpa_supplicant
 %{_sbindir}/hostapd
 %{_sbindir}/hostapd_cli
-%{_sysconfdir}/hostapd.accept
-%{_sysconfdir}/hostapd.deny
+%{TZ_SYS_VAR}/lib/hostapd/hostapd.accept
+%{TZ_SYS_VAR}/lib/hostapd/hostapd.deny
+%{TZ_SYS_VAR}/lib/hostapd/.hostapd_tmp
 %attr(500,root,root) %{_sbindir}/wpa_supp.sh
 %attr(644,-,-) %{_sysconfdir}/dbus-1/system.d/*.conf
 #%attr(644,-,-) %{_datadir}/dbus-1/services/*.service
