@@ -2983,12 +2983,16 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 	DBusMessageIter iter;
 	struct wpa_dbus_dict_entry entry;
 	int upnp = 0;
+	int asp = 0;
 	char *service = NULL;
 	char *peer_object_path = NULL;
 	struct wpabuf *tlv = NULL;
 	u8 version = 0;
 	u64 ref = 0;
 	u8 addr_buf[ETH_ALEN], *addr;
+	u8 transaction_id = 0;
+	char *svc_str = NULL;
+	char *svc_info = NULL;
 
 	dbus_message_iter_init(message, &iter);
 
@@ -3005,6 +3009,8 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 			   entry.type == DBUS_TYPE_STRING) {
 			if (os_strcmp(entry.str_value, "upnp") == 0)
 				upnp = 1;
+			else if (os_strcmp(entry.str_value, "asp") == 0)
+				asp = 1;
 			else
 				goto error_clear;
 		} else if (os_strcmp(entry.key, "version") == 0 &&
@@ -3019,7 +3025,16 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 				goto error_clear;
 			tlv = wpabuf_alloc_copy(entry.bytearray_value,
 						entry.array_len);
-		} else
+		} else if (os_strcmp(entry.key, "transaction_id") == 0 &&
+				   entry.type == DBUS_TYPE_BYTE) {
+			transaction_id = entry.byte_value;
+		} else if (os_strcmp(entry.key, "svc_str") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			svc_str = os_strdup(entry.str_value);
+		} else if (os_strcmp(entry.key, "svc_info") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			svc_info = os_strdup(entry.str_value);
+		}  else
 			goto error_clear;
 
 		wpa_dbus_dict_entry_clear(&entry);
@@ -3040,6 +3055,11 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 			goto error;
 
 		ref = wpas_p2p_sd_request_upnp(wpa_s, addr, version, service);
+	} else if (asp == 1) {
+		if(transaction_id == 0 || svc_str == NULL)
+			goto error;
+		ref = wpas_p2p_sd_request_asp(wpa_s, addr, transaction_id,
+				svc_str, svc_info);
 	} else {
 		if (tlv == NULL)
 			goto error;
@@ -3056,6 +3076,8 @@ DBusMessage * wpas_dbus_handler_p2p_service_sd_req(
 			message, "Unable to send SD request");
 	}
 out:
+	os_free(svc_str);
+	os_free(svc_info);
 	os_free(service);
 	os_free(peer_object_path);
 	return reply;

@@ -1504,10 +1504,14 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 	<table>
 	<tr><th>Key</th><th>Value type</th><th>Description</th><th>Required</th></tr>
 	<tr><td>peer_object</td><td>o</td><td></td><td>no</td></tr>
-	<tr><td>service_type</td><td>s</td><td>"upnp"</td><td>no</td></tr>
+	<tr><td>service_type</td><td>s</td><td>"upnp", "asp"</td><td>no</td></tr>
 	<tr><td>version</td><td>u</td><td>Required for UPnP services.</td><td>no</td></tr>
 	<tr><td>service</td><td>s</td><td></td><td></td></tr>
 	<tr><td>tlv</td><td>ay</td><td></td><td></td></tr>
+	<tr><td>transaction_id</td><td>u</td><td>Required for ASP services.</td><td>no</td></tr>
+	<tr><td>transaction_id</td><td>u</td><td>Mandator for ASP services.</td><td>no</td></tr>
+	<tr><td>srv_str</td><td>u</td><td>Mandator for ASP services.</td><td>no</td></tr>
+	<tr><td>svc_info</td><td>u</td><td>Required for ASP services.</td><td>no</td></tr>
 	</table>
       </dd>
     </dl>
