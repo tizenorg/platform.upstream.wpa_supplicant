@@ -106,6 +106,10 @@ void wpas_notify_p2p_sd_request(struct wpa_supplicant *wpa_s,
 void wpas_notify_p2p_sd_response(struct wpa_supplicant *wpa_s,
 				 const u8 *sa, u16 update_indic,
 				 const u8 *tlvs, size_t tlvs_len);
+void wpas_notify_p2p_sd_asp_response(struct wpa_supplicant *wpa_s,
+				 const u8 *sa, u8 srv_trans_id, u32 adv_id,
+				 u8 svc_status, u16 config_methods,
+				 char *svc_str, char *info);
 void wpas_notify_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 					 const u8 *dev_addr, int request,
 					 enum p2p_prov_disc_status status,
