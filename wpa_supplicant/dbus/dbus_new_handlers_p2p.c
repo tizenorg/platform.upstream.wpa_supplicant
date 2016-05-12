@@ -2689,10 +2689,20 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 	struct wpa_dbus_dict_entry entry;
 	int upnp = 0;
 	int bonjour = 0;
+	int asp = 0;
 	char *service = NULL;
 	struct wpabuf *query = NULL;
 	struct wpabuf *resp = NULL;
 	u8 version = 0;
+	char *adv_str = NULL;
+	u32 auto_accept = 0;
+	u32 svc_state = 0xffff;
+	u32 adv_id = 0;
+	u32 config_methods = 0;
+	int replace = 0;
+	char *svc_info = NULL;
+	char *cpt_prio_str;
+	u8 cpt_prio[P2PS_FEATURE_CAPAB_CPT_MAX + 1];
 
 	dbus_message_iter_init(message, &iter);
 
@@ -2709,6 +2719,8 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 				upnp = 1;
 			else if (os_strcmp(entry.str_value, "bonjour") == 0)
 				bonjour = 1;
+			else if (os_strcmp(entry.str_value, "asp") == 0)
+				asp = 1;
 			else
 				goto error_clear;
 		} else if (os_strcmp(entry.key, "version") == 0 &&
@@ -2731,6 +2743,53 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 				goto error_clear;
 			resp = wpabuf_alloc_copy(entry.bytearray_value,
 						 entry.array_len);
+		//TODO : check type of value and mandatory value
+		} else if (os_strcmp(entry.key, "auto_accept") == 0 &&
+				   entry.type == DBUS_TYPE_INT32) {
+			/* Auto-Accept value is mandatory, and must be one of the
+			 *  * single values (0, 1, 2, 4) */
+				auto_accept = entry.int32_value;
+				switch (auto_accept) {
+				case P2PS_SETUP_NONE: /* No auto-accept */
+				case P2PS_SETUP_NEW:
+				case P2PS_SETUP_CLIENT:
+				case P2PS_SETUP_GROUP_OWNER:
+					break;
+				default:
+					goto error_clear;
+				}
+		} else if (os_strcmp(entry.key, "adv_id") == 0 &&
+				   entry.type == DBUS_TYPE_UINT32) {
+			/* Advertisement ID is mandatory */
+			adv_id= entry.uint32_value;
+			if(adv_id == 0)
+				goto error_clear;
+		} else if (os_strcmp(entry.key, "svc_state") == 0 &&
+				   entry.type == DBUS_TYPE_UINT32) {
+			/* svc_state between 0 - 0xff is mandatory */
+			svc_state = entry.uint32_value;
+			if(svc_state > 0xff)
+				goto error_clear;
+		} else if (os_strcmp(entry.key, "config_method") == 0 &&
+				   entry.type == DBUS_TYPE_UINT32) {
+			/* config_methods is mandatory */
+			config_methods = entry.uint32_value;
+			if (!(config_methods &
+					(WPS_CONFIG_DISPLAY | WPS_CONFIG_KEYPAD | WPS_CONFIG_P2PS)))
+				goto error_clear;
+		} else if (os_strcmp(entry.key, "adv_str") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			/* Advertisement string is mandatory */
+			os_free(adv_str);
+			adv_str = os_strdup(entry.str_value);
+		} else if (os_strcmp(entry.key, "svc_info") == 0 &&
+				   entry.type == DBUS_TYPE_STRING) {
+			/* Service and Response Information are optional */
+			os_free(svc_info);
+			svc_info = os_strdup(entry.str_value);
+		} else if (os_strcmp(entry.key, "replace") == 0 &&
+			    entry.type == DBUS_TYPE_BOOLEAN) {
+			replace = entry.bool_value;
 		}
 		wpa_dbus_dict_entry_clear(&entry);
 	}
@@ -2750,15 +2809,39 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 			goto error;
 		query = NULL;
 		resp = NULL;
+	} else if (asp == 1) {
+		if(adv_id == 0 || svc_state > 0xff || config_methods == 0 || adv_str == NULL)
+			goto error;
+
+		if (wpas_p2p_service_p2ps_id_exists(wpa_s, adv_id)) {
+			if (!replace)
+				goto error;
+		} else {
+			if (replace)
+				goto error;
+		}
+
+		cpt_prio[0] = P2PS_FEATURE_CAPAB_UDP_TRANSPORT;
+		cpt_prio[1] = 0;
+
+		if(wpas_p2p_service_add_asp(wpa_s, auto_accept, adv_id, adv_str,
+				(u8) svc_state, (u16) config_methods,
+				svc_info, cpt_prio))
+			goto error;
+
 	} else
 		goto error;
 
 	os_free(service);
+	os_free(adv_str);
+	os_free(svc_info);
 	return reply;
 error_clear:
 	wpa_dbus_dict_entry_clear(&entry);
 error:
 	os_free(service);
+	os_free(adv_str);
+	os_free(svc_info);
 	wpabuf_free(query);
 	wpabuf_free(resp);
 	return wpas_dbus_error_invalid_args(message, NULL);
@@ -2774,10 +2857,12 @@ DBusMessage * wpas_dbus_handler_p2p_delete_service(
 	struct wpa_dbus_dict_entry entry;
 	int upnp = 0;
 	int bonjour = 0;
+	int asp = 0;
 	int ret = 0;
 	char *service = NULL;
 	struct wpabuf *query = NULL;
 	u8 version = 0;
+	u32 adv_id = 0;
 
 	dbus_message_iter_init(message, &iter);
 
@@ -2794,6 +2879,8 @@ DBusMessage * wpas_dbus_handler_p2p_delete_service(
 				upnp = 1;
 			else if (os_strcmp(entry.str_value, "bonjour") == 0)
 				bonjour = 1;
+			else if (os_strcmp(entry.str_value, "asp") == 0)
+				asp = 1;
 			else
 				goto error_clear;
 			wpa_dbus_dict_entry_clear(&entry);
@@ -2845,6 +2932,24 @@ DBusMessage * wpas_dbus_handler_p2p_delete_service(
 			goto error;
 
 		ret = wpas_p2p_service_del_bonjour(wpa_s, query);
+		if (ret != 0)
+			goto error;
+	} else if (asp == 1) {
+
+		while (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
+			if (!wpa_dbus_dict_get_entry(&iter_dict, &entry))
+				goto error;
+			if (os_strcmp(entry.key, "adv_id") == 0 &&
+					 entry.type == DBUS_TYPE_UINT32) {
+				adv_id = entry.uint32_value;
+			} else
+				goto error_clear;
+
+			wpa_dbus_dict_entry_clear(&entry);
+		}
+		if(adv_id == 0)
+			goto error;
+		ret = wpas_p2p_service_del_asp(wpa_s, adv_id);
 		if (ret != 0)
 			goto error;
 	} else

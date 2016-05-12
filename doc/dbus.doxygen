@@ -1452,11 +1452,18 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 	A dictionary with parameters for the service:
 	<table>
 	<tr><th>Key</th><th>Value type</th><th>Description</th><th>Required</th></tr>
-	<tr><td>service_type</td><td>s</td><td>"upnp", "bonjour"</td><td>yes</td></tr>
+	<tr><td>service_type</td><td>s</td><td>"upnp", "bonjour", "asp"</td><td>yes</td></tr>
 	<tr><td>version</td><td>u</td><td>Required for UPnP services.</td><td>no</td></tr>
 	<tr><td>service</td><td>s</td><td></td><td></td></tr>
 	<tr><td>query</td><td>ay</td><td></td><td></td></tr>
 	<tr><td>response</td><td>ay</td><td></td><td></td></tr>
+	<tr><td>auto_accept</td><td>i</td><td>Enables/Disables auto accept for ASP service.</td><td>no</td></tr>
+	<tr><td>adv_id</td><td>i</td><td>ASP Service advertisement ID.</td><td>no</td></tr>
+	<tr><td>svc_state</td><td>i</td><td>ASP service state.</td><td>no</td></tr>
+	<tr><td>config_method</td><td>i</td><td>Preferred Wi-Fi Simple Config(WSC) method.</td><td>no</td></tr>
+	<tr><td>adv_str</td><td>i</td><td>ASP service name.</td><td>no</td></tr>
+	<tr><td>svc_info</td><td>i</td><td>ASP service information.</td><td>no</td></tr>
+	<tr><td>replace</td><td>i</td><td>Replace existed ASP service.</td><td>no</td></tr>
 	</table>
       </dd>
     </dl>
@@ -1472,10 +1479,11 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 	A dictionary with parameters for the service:
 	<table>
 	<tr><th>Key</th><th>Value type</th><th>Description</th><th>Required</th></tr>
-	<tr><td>service_type</td><td>s</td><td>"upnp", "bonjour"</td><td>yes</td></tr>
+	<tr><td>service_type</td><td>s</td><td>"upnp", "bonjour", "asp"</td><td>yes</td></tr>
 	<tr><td>version</td><td>u</td><td>Required for UPnP services.</td><td>no</td></tr>
 	<tr><td>service</td><td>s</td><td></td><td></td></tr>
 	<tr><td>query</td><td>ay</td><td></td><td></td></tr>
+	<tr><td>adv_id</td><td>i</td><td>ASP Service advertisement ID.</td><td>no</td></tr>
 	</table>
       </dd>
     </dl>
