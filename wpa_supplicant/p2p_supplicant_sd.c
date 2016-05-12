@@ -874,12 +874,18 @@ static void wpas_sd_p2ps_serv_response(struct wpa_supplicant *wpa_s,
 				       MAC2STR(sa), srv_trans_id, adv_id,
 				       svc_status, config_methods, svc_str,
 				       buf);
+			wpas_notify_p2p_sd_asp_response(wpa_s, sa,
+				       srv_trans_id, adv_id, svc_status, config_methods,
+				       svc_str, buf);
 			os_free(buf);
 		} else {
 			wpa_msg_global(wpa_s, MSG_INFO, P2P_EVENT_SERV_ASP_RESP
 				       MACSTR " %x %x %x %x %s",
 				       MAC2STR(sa), srv_trans_id, adv_id,
 				       svc_status, config_methods, svc_str);
+			wpas_notify_p2p_sd_asp_response(wpa_s, sa,
+					srv_trans_id, adv_id, svc_status, config_methods,
+				       svc_str, NULL);
 		}
 	}
 }

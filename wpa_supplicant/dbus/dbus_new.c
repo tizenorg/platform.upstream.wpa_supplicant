@@ -1768,6 +1768,85 @@ void wpas_dbus_signal_p2p_sd_response(struct wpa_supplicant *wpa_s,
 	dbus_message_unref(msg);
 }
 
+/**
+ *
+ * Method to emit a signal for a service discovery response.
+ * The signal will carry station address, update indicator and it
+ * tlvs
+ *
+ * @wpa_s: %wpa_supplicant network interface data
+ * @sa: station addr (p2p i/f) of the peer
+ * @adv_id: service advertisement ID
+ * @svc_status: service status
+ * @config_methods: bitmask of WSC config methods
+ * @svc_str: service name
+ * @info: optional UTF-8 string
+ */
+void wpas_dbus_signal_p2p_sd_asp_response(struct wpa_supplicant *wpa_s,
+				      const u8 *sa, u8 srv_trans_id, u32 adv_id,
+				      u8 svc_status, u16 config_methods,
+				      char *svc_str, char *info)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter, dict_iter;
+	struct wpas_dbus_priv *iface;
+	char peer_obj_path[WPAS_DBUS_OBJECT_PATH_MAX], *path;
+
+	iface = wpa_s->global->dbus;
+
+	/* Do nothing if the control interface is not turned on */
+	if (iface == NULL)
+		return;
+
+	if (wpa_s->p2p_mgmt)
+		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
+
+	/* Check if this is a known peer */
+	if (!p2p_peer_known(wpa_s->global->p2p, sa))
+		return;
+
+	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+				      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+				      "ServiceASPResponse");
+	if (msg == NULL)
+		return;
+
+	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
+		    "%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/"
+		    COMPACT_MACSTR, wpa_s->dbus_new_path, MAC2STR(sa));
+
+	path = peer_obj_path;
+
+	dbus_message_iter_init_append(msg, &iter);
+	if (!wpa_dbus_dict_open_write(&iter, &dict_iter) ||
+	    !wpa_dbus_dict_append_object_path(&dict_iter, "peer_object",
+					      path) ||
+	    !wpa_dbus_dict_append_uint32(&dict_iter, "srv_trans_id",
+					      srv_trans_id) ||
+	    !wpa_dbus_dict_append_uint32(&dict_iter, "adv_id",
+					      adv_id) ||
+			!wpa_dbus_dict_append_uint32(&dict_iter, "svc_status",
+					      svc_status) ||
+			!wpa_dbus_dict_append_uint16(&dict_iter, "config_methods",
+					      config_methods) ||
+			!wpa_dbus_dict_append_string(&dict_iter, "svc_str",
+					      svc_str)
+		)
+		goto error;
+
+	if(info &&
+		!wpa_dbus_dict_append_string(&dict_iter, "info", info))
+		goto error;
+
+	if(!wpa_dbus_dict_close_write(&iter, &dict_iter))
+		goto error;
+
+		dbus_connection_send(iface->con, msg, NULL);
+error:
+	dbus_message_unref(msg);
+}
 
 /**
  * wpas_dbus_signal_persistent_group - Send a persistent group related
@@ -3502,6 +3581,12 @@ static const struct wpa_dbus_signal_desc wpas_dbus_interface_signals[] = {
 	{ "ServiceDiscoveryResponse", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
 	  {
 		  { "sd_response", "a{sv}", ARG_OUT },
+		  END_ARGS
+	  }
+	},
+	{ "ServiceASPResponse", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+	  {
+		  { "sd_asp_response", "a{sv}", ARG_OUT },
 		  END_ARGS
 	  }
 	},

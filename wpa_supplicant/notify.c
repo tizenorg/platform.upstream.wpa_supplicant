@@ -620,6 +620,15 @@ void wpas_notify_p2p_sd_response(struct wpa_supplicant *wpa_s,
 					 tlvs, tlvs_len);
 }
 
+void wpas_notify_p2p_sd_asp_response(struct wpa_supplicant *wpa_s,
+				 const u8 *sa, u8 srv_trans_id, u32 adv_id,
+				 u8 svc_status, u16 config_methods,
+				 char *svc_str, char *info)
+{
+	wpas_dbus_signal_p2p_sd_asp_response(wpa_s, sa, srv_trans_id, adv_id,
+					 svc_status, config_methods, svc_str, info);
+}
+
 
 /**
  * wpas_notify_p2p_provision_discovery - Notification of provision discovery
