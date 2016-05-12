@@ -76,8 +76,11 @@ DBusMessage * wpas_dbus_handler_p2p_find(DBusMessage *message,
 	unsigned int timeout = 0;
 	enum p2p_discovery_type type = P2P_FIND_START_WITH_FULL;
 	int num_req_dev_types = 0;
-	unsigned int i;
+	unsigned int i = 0;
 	u8 *req_dev_types = NULL;
+	char *seek[P2P_MAX_QUERY_HASH + 1];
+	u8 seek_count = 0;
+	int size = 0;
 
 	dbus_message_iter_init(message, &iter);
 	entry.key = NULL;
@@ -122,21 +125,59 @@ DBusMessage * wpas_dbus_handler_p2p_find(DBusMessage *message,
 				type = P2P_FIND_PROGRESSIVE;
 			else
 				goto error_clear;
-		} else
+		} else if (os_strcmp(entry.key, "Seek") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+			    entry.array_type != WPAS_DBUS_TYPE_BINARRAY ||
+			    entry.array_len	 == 0)
+				goto error_clear;
+
+			for (i = 0; i < entry.array_len; i++)
+				if (entry.binarray_value[i] == NULL)
+						goto error_clear;
+
+			if(entry.array_len > P2P_MAX_QUERY_HASH) {
+				os_memset(seek, 0, P2P_MAX_QUERY_HASH + 1);
+				seek_count = 1;
+			} else {
+				while(seek_count < entry.array_len) {
+					size = wpabuf_len(entry.binarray_value[seek_count]);
+					if(size > P2PS_MAX_SERV_NAME_LEN)
+						goto error_clear;
+					seek[seek_count] = os_zalloc(size);
+					if(seek[seek_count] == NULL)
+						goto error_clear;
+					os_memcpy(seek[seek_count],
+							wpabuf_head(entry.binarray_value[seek_count]),
+							size);
+					seek[seek_count][size - 1] = '\0';
+					seek_count++;
+				}
+			}
+		} else {
 			goto error_clear;
+		}
 		wpa_dbus_dict_entry_clear(&entry);
 	}
 
 	wpa_s = wpa_s->global->p2p_init_wpa_s;
 
-	wpas_p2p_find(wpa_s, timeout, type, num_req_dev_types, req_dev_types,
-		      NULL, 0, 0, NULL, 0);
+	if(!seek_count)
+		wpas_p2p_find(wpa_s, timeout, type, num_req_dev_types, req_dev_types,
+				NULL, 0, 0, NULL, 0);
+	else
+		wpas_p2p_find(wpa_s, timeout, type, num_req_dev_types, req_dev_types,
+				NULL, 0, seek_count, (const char **)seek, 0);
+
+	for(i = 0; i < seek_count; i++)
+		os_free(seek[i]);
 	os_free(req_dev_types);
 	return reply;
 
 error_clear:
 	wpa_dbus_dict_entry_clear(&entry);
 error:
+	for(i = 0; i < seek_count; i++)
+		os_free(seek[i]);
 	os_free(req_dev_types);
 	reply = wpas_dbus_error_invalid_args(message, entry.key);
 	return reply;

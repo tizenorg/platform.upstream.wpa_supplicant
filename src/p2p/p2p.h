@@ -22,6 +22,7 @@
 #define P2PS_HASH_LEN 6
 #define P2P_MAX_QUERY_HASH 6
 #define P2PS_FEATURE_CAPAB_CPT_MAX 2
+#define P2PS_MAX_SERV_NAME_LEN 255
 
 /**
  * P2P_MAX_PREF_CHANNELS - Maximum number of preferred channels
