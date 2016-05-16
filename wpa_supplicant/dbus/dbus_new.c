@@ -1056,8 +1056,7 @@ void wpas_dbus_signal_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 		else
 			return; /* Unknown or un-supported method */
 	} else {
-		/* Explicit check for failure response */
-		_signal = "ProvisionDiscoveryFailure";
+		return; /* Unknown or un-supported method */
 	}
 
 	add_pin = ((request && (config_methods & WPS_CONFIG_DISPLAY)) ||
@@ -1092,16 +1091,257 @@ void wpas_dbus_signal_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 					    &path))
 			goto error;
 
-	if (!request && status)
-		/* Attach status to ProvisionDiscoveryFailure */
-		error_ret = !dbus_message_iter_append_basic(&iter,
-						    DBUS_TYPE_INT32,
-						    &status);
-	else
+	if (request || !status)
 		error_ret = (add_pin &&
 				 !dbus_message_iter_append_basic(&iter,
 							DBUS_TYPE_STRING,
 							&p_pin));
+
+error:
+	if (!error_ret)
+		dbus_connection_send(iface->con, msg, NULL);
+	else
+		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
+
+	dbus_message_unref(msg);
+}
+
+
+/**
+ * wpas_dbus_signal_p2p_provision_discovery_failure - Signals PD failure event
+ *
+ * @dev_addr - who sent the request or responded to our request.
+ * @status - valid only in case of response
+ * @adv_id -valid only in case of ASP Provision Discovery
+ * @deferred_sessoin_resp - valid only in case of ASP Provision Discovery
+ * Sends following provision discovery failure event
+ */
+void wpas_dbus_signal_p2p_provision_discovery_failure(struct wpa_supplicant *wpa_s,
+					      const u8 *dev_addr, enum p2p_prov_disc_status status,
+					      u32 adv_id, const char *deferred_session_resp)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter, dict_iter;
+	struct wpas_dbus_priv *iface;
+	char peer_obj_path[WPAS_DBUS_OBJECT_PATH_MAX], *path;
+	int error_ret = 1;
+
+	iface = wpa_s->global->dbus;
+
+	/* Do nothing if the control interface is not turned on */
+	if (iface == NULL)
+		return;
+
+	if (wpa_s->p2p_mgmt)
+		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
+
+	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+			WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+			"ProvisionDiscoveryFailure");
+	if (msg == NULL)
+		return;
+
+	/* Check if this is a known peer */
+	if (!p2p_peer_known(wpa_s->global->p2p, dev_addr))
+		goto error;
+
+	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
+		    "%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/" COMPACT_MACSTR,
+		    wpa_s->dbus_new_path, MAC2STR(dev_addr));
+	path = peer_obj_path;
+
+	dbus_message_iter_init_append(msg, &iter);
+	if (!wpa_dbus_dict_open_write(&iter, &dict_iter) ||
+			!wpa_dbus_dict_append_object_path(&dict_iter, "peer_object",
+	    		path) ||
+	   	!wpa_dbus_dict_append_int32(&dict_iter, "status", status))
+		goto error;
+
+	if(adv_id > 0 &&
+			!wpa_dbus_dict_append_uint32(&dict_iter, "adv_id", adv_id))
+		goto error;
+
+	if(deferred_session_resp &&
+			!wpa_dbus_dict_append_string(&dict_iter, "deferred_session_resp",
+					deferred_session_resp))
+					goto error;
+
+	error_ret =!(wpa_dbus_dict_close_write(&iter, &dict_iter));
+
+error:
+	if (!error_ret)
+		dbus_connection_send(iface->con, msg, NULL);
+	else
+		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
+
+	dbus_message_unref(msg);
+}
+
+
+void wpas_dbus_signal_p2p_asp_provision_start(struct wpa_supplicant *wpa_s,
+				     const u8 *dev, struct p2ps_provision *p2ps_prov,
+				     int dev_passwd_id, const char *session_info)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter, dict_iter;
+	struct wpas_dbus_priv *iface;
+	char peer_obj_path[WPAS_DBUS_OBJECT_PATH_MAX], *path;
+	int error_ret = 1;
+
+	iface = wpa_s->global->dbus;
+
+	/* Do nothing if the control interface is not turned on */
+	if (iface == NULL)
+		return;
+
+	if (wpa_s->p2p_mgmt)
+		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
+
+	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+			WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+			"ASPProvisionStart");
+	if (msg == NULL)
+		return;
+
+	/* Check if this is a known peer */
+	if (!p2p_peer_known(wpa_s->global->p2p, dev))
+		goto error;
+
+	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
+		    "%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/" COMPACT_MACSTR,
+		    wpa_s->dbus_new_path, MAC2STR(dev));
+	path = peer_obj_path;
+
+	dbus_message_iter_init_append(msg, &iter);
+	if (!wpa_dbus_dict_open_write(&iter, &dict_iter) ||
+			!wpa_dbus_dict_append_object_path(&dict_iter, "peer_object",
+	    		path) ||
+	   	!wpa_dbus_dict_append_uint32(&dict_iter, "adv_id", p2ps_prov->adv_id) ||
+	   	!wpa_dbus_dict_append_uint32(&dict_iter, "ses_id", p2ps_prov->session_id) ||
+	   	!wpa_dbus_dict_append_int32(&dict_iter, "dev_passwd_id", dev_passwd_id) ||
+	   	!wpa_dbus_dict_append_uint32(&dict_iter, "conncap", p2ps_prov->conncap) ||
+	    !wpa_dbus_dict_append_byte_array(&dict_iter,
+					     "adv_mac",
+					     (const char *)
+					     p2ps_prov->adv_mac,
+					     ETH_ALEN) ||
+	    !wpa_dbus_dict_append_byte_array(&dict_iter,
+					     "ses_mac",
+					     (const char *)
+					     p2ps_prov->session_mac,
+					     ETH_ALEN)
+		)
+		goto error;
+
+	if(session_info &&
+			!wpa_dbus_dict_append_string(&dict_iter, "session_info",
+					session_info))
+					goto error;
+
+	error_ret = !(wpa_dbus_dict_close_write(&iter, &dict_iter));
+
+error:
+	if (!error_ret)
+		dbus_connection_send(iface->con, msg, NULL);
+	else
+		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
+
+	dbus_message_unref(msg);
+}
+
+
+void wpas_dbus_signal_p2p_asp_provision_done(struct wpa_supplicant *wpa_s,
+				     const u8 *dev, struct p2ps_provision *p2ps_prov,
+				     const u8 *group_mac, int passwd_id, struct wpa_ssid *ssid,
+				     const char *go_ifname)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter, dict_iter;
+	struct wpas_dbus_priv *iface;
+	char peer_obj_path[WPAS_DBUS_OBJECT_PATH_MAX], *path;
+	int error_ret = 1;
+	u8 zero_mac[ETH_ALEN] = {0,};
+
+	iface = wpa_s->global->dbus;
+
+	/* Do nothing if the control interface is not turned on */
+	if (iface == NULL)
+		return;
+
+	if (wpa_s->p2p_mgmt)
+		wpa_s = wpa_s->parent;
+	if (!wpa_s->dbus_new_path)
+		return;
+
+	msg = dbus_message_new_signal(wpa_s->dbus_new_path,
+			WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+			"ASPProvisionDone");
+	if (msg == NULL)
+		return;
+
+	/* Check if this is a known peer */
+	if (!p2p_peer_known(wpa_s->global->p2p, dev))
+		goto error;
+
+	os_snprintf(peer_obj_path, WPAS_DBUS_OBJECT_PATH_MAX,
+		    "%s/" WPAS_DBUS_NEW_P2P_PEERS_PART "/" COMPACT_MACSTR,
+		    wpa_s->dbus_new_path, MAC2STR(dev));
+	path = peer_obj_path;
+
+	dbus_message_iter_init_append(msg, &iter);
+	if (!wpa_dbus_dict_open_write(&iter, &dict_iter) ||
+			!wpa_dbus_dict_append_object_path(&dict_iter, "peer_object",
+	    		path) ||
+	   	!wpa_dbus_dict_append_uint32(&dict_iter, "adv_id", p2ps_prov->adv_id) ||
+	   	!wpa_dbus_dict_append_uint32(&dict_iter, "ses_id", p2ps_prov->session_id) ||
+	   	!wpa_dbus_dict_append_uint32(&dict_iter, "status", p2ps_prov->status) ||
+	    !wpa_dbus_dict_append_byte_array(&dict_iter,
+					     "adv_mac",
+					     (const char *)
+					     p2ps_prov->adv_mac,
+					     ETH_ALEN) ||
+	    !wpa_dbus_dict_append_byte_array(&dict_iter,
+					     "ses_mac",
+					     (const char *)
+					     p2ps_prov->session_mac,
+					     ETH_ALEN)
+		)
+		goto error;
+
+	if(passwd_id &&
+			!wpa_dbus_dict_append_int32(&dict_iter, "dev_passwd_id",
+					passwd_id))
+					goto error;
+
+	if(p2ps_prov->conncap &&
+			!wpa_dbus_dict_append_uint32(&dict_iter, "conncap",
+					p2ps_prov->conncap))
+					goto error;
+
+	if(ssid &&
+			!wpa_dbus_dict_append_uint32(&dict_iter, "persist",
+					ssid->id))
+					goto error;
+
+	if(group_mac &&
+			os_memcmp(group_mac, zero_mac, ETH_ALEN) != 0 &&
+			!wpa_dbus_dict_append_byte_array(&dict_iter,
+				     "group_mac",
+				     (const char *)
+				     group_mac,
+				     ETH_ALEN))
+					goto error;
+
+	if(go_ifname &&
+			!wpa_dbus_dict_append_string(&dict_iter, "go_ifname",
+					go_ifname))
+					goto error;
+
+	error_ret = !(wpa_dbus_dict_close_write(&iter, &dict_iter));
 
 error:
 	if (!error_ret)

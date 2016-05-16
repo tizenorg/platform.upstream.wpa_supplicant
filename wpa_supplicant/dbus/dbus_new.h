@@ -185,6 +185,16 @@ void wpas_dbus_signal_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 					      enum p2p_prov_disc_status status,
 					      u16 config_methods,
 					      unsigned int generated_pin);
+void wpas_dbus_signal_p2p_provision_discovery_failure(struct wpa_supplicant *wpa_s,
+					      const u8 *dev_addr, enum p2p_prov_disc_status status,
+					      u32 adv_id, const char *deferred_session_resp);
+void wpas_dbus_signal_p2p_asp_provision_start(struct wpa_supplicant *wpa_s,
+					      const u8 *dev, struct p2ps_provision *p2ps_prov,
+					      int dev_passwd_id, const char *session_info);
+void wpas_dbus_signal_p2p_asp_provision_done(struct wpa_supplicant *wpa_s,
+					      const u8 *dev, struct p2ps_provision *p2ps_prov,
+					      const u8 *group_mac, int passwd_id, struct wpa_ssid *ssid,
+					      const char *go_ifname);
 void wpas_dbus_signal_p2p_go_neg_req(struct wpa_supplicant *wpa_s,
 				     const u8 *src, u16 dev_passwd_id,
 				     u8 go_intent);
@@ -392,6 +402,28 @@ wpas_dbus_signal_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 					 enum p2p_prov_disc_status status,
 					 u16 config_methods,
 					 unsigned int generated_pin)
+{
+}
+
+static inline void
+wpas_dbus_signal_p2p_provision_discovery_failure(struct wpa_supplicant *wpa_s,
+				   const u8 *dev_addr, enum p2p_prov_disc_status status,
+				   u32 adv_id, const char *deferred_session_resp)
+{
+}
+
+static inline void
+wpas_dbus_signal_p2p_asp_provision_start(struct wpa_supplicant *wpa_s,
+					 const u8 *dev, struct p2ps_provision *p2ps_prov,
+					 int dev_passwd_id, const char *session_info);
+{
+}
+
+static inline void
+wpas_dbus_signal_p2p_asp_provision_done(struct wpa_supplicant *wpa_s,
+					 const u8 *dev, struct p2ps_provision *p2ps_prov,
+					 const u8 *group_mac, int passwd_id, struct wpa_ssid *ssid,
+					 const char *go_ifname);
 {
 }
 
