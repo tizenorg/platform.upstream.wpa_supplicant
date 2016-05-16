@@ -2617,18 +2617,18 @@ static void wpas_prov_disc_fail(void *ctx, const u8 *peer,
 			       " deferred_session_resp='%s'",
 			       MAC2STR(peer), status, adv_id,
 			       deferred_session_resp);
+		wpas_notify_p2p_provision_discovery_failure(wpa_s, peer, status, adv_id, deferred_session_resp);
 	} else if (adv_id && adv_mac) {
 		wpa_msg_global(wpa_s, MSG_INFO, P2P_EVENT_PROV_DISC_FAILURE
 			       " p2p_dev_addr=" MACSTR " status=%d adv_id=%x",
 			       MAC2STR(peer), status, adv_id);
+		wpas_notify_p2p_provision_discovery_failure(wpa_s, peer, status, adv_id, NULL);
 	} else {
 		wpa_msg_global(wpa_s, MSG_INFO, P2P_EVENT_PROV_DISC_FAILURE
 			       " p2p_dev_addr=" MACSTR " status=%d",
 			       MAC2STR(peer), status);
+		wpas_notify_p2p_provision_discovery_failure(wpa_s, peer, status, 0, NULL);
 	}
-
-	wpas_notify_p2p_provision_discovery(wpa_s, peer, 0 /* response */,
-					    status, 0, 0);
 }
 
 
@@ -3763,6 +3763,7 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 	struct wpa_ssid *persistent_go, *stale, *s;
 	int save_config = 0;
 	struct wpa_supplicant *go_wpa_s;
+	struct p2ps_provision p2ps_prov;
 	char feat_cap_str[256];
 
 	if (!dev)
@@ -3775,6 +3776,13 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 		ses_mac = mac;
 	if (!grp_mac)
 		grp_mac = mac;
+
+	os_memset(&p2ps_prov, 0, sizeof(p2ps_prov));
+	p2ps_prov.adv_id = adv_id;
+	p2ps_prov.session_id = ses_id;
+	p2ps_prov.conncap = conncap;
+	os_memcpy(p2ps_prov.adv_mac, adv_mac, ETH_ALEN);
+	os_memcpy(p2ps_prov.session_mac, ses_mac, ETH_ALEN);
 
 	wpas_p2ps_get_feat_cap_str(feat_cap_str, sizeof(feat_cap_str),
 				   feat_cap, feat_cap_len);
@@ -3803,11 +3811,13 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 				       ses_id, MAC2STR(ses_mac),
 				       passwd_id, session_info, feat_cap_str);
 		}
+		wpas_notify_p2p_asp_provision_start(wpa_s, dev, &p2ps_prov, passwd_id, session_info);
 		return;
 	}
 
 	go_wpa_s = wpas_p2p_get_go_group(wpa_s);
 	persistent_go = wpas_p2p_get_persistent_go(wpa_s);
+	p2ps_prov.status = status;
 
 	if (status && status != P2P_SC_SUCCESS_DEFERRED) {
 		if (go_wpa_s && !p2p_group_go_member_count(wpa_s))
@@ -3827,6 +3837,9 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 			       MAC2STR(dev), status,
 			       adv_id, MAC2STR(adv_mac),
 			       ses_id, MAC2STR(ses_mac), feat_cap_str);
+
+		p2ps_prov.conncap = 0;
+		wpas_notify_p2p_asp_provision_done(wpa_s, dev, &p2ps_prov, NULL, 0, NULL, NULL);
 		return;
 	}
 
@@ -3900,6 +3913,9 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 			       MAC2STR(dev), status,
 			       adv_id, MAC2STR(adv_mac),
 			       ses_id, MAC2STR(ses_mac), s->id, feat_cap_str);
+
+		p2ps_prov.conncap = 0;
+		wpas_notify_p2p_asp_provision_done(wpa_s, dev, &p2ps_prov, NULL, 0, s, NULL);
 		return;
 	}
 
@@ -3987,6 +4003,8 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 			       adv_id, MAC2STR(adv_mac),
 			       ses_id, MAC2STR(ses_mac),
 			       passwd_id, go_ifname, feat_cap_str);
+
+		wpas_notify_p2p_asp_provision_done(wpa_s, dev, &p2ps_prov, NULL, passwd_id, NULL, go_ifname);
 		return;
 	}
 
@@ -4009,6 +4027,8 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 			       adv_id, MAC2STR(adv_mac),
 			       ses_id, MAC2STR(ses_mac),
 			       passwd_id, MAC2STR(grp_mac), feat_cap_str);
+
+		wpas_notify_p2p_asp_provision_done(wpa_s, dev, &p2ps_prov, grp_mac, passwd_id, 0, NULL);
 	} else {
 		wpa_msg_global(wpa_s, MSG_INFO,
 			       P2P_EVENT_P2PS_PROVISION_DONE MACSTR
@@ -4020,6 +4040,8 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 			       adv_id, MAC2STR(adv_mac),
 			       ses_id, MAC2STR(ses_mac),
 			       passwd_id, feat_cap_str);
+
+		wpas_notify_p2p_asp_provision_done(wpa_s, dev, &p2ps_prov, NULL, passwd_id,NULL, NULL);
 	}
 }
 
