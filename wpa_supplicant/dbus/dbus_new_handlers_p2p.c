@@ -634,6 +634,8 @@ DBusMessage * wpas_dbus_handler_p2p_connect(DBusMessage *message,
 				wps_method = WPS_PIN_DISPLAY;
 			else if (os_strcmp(entry.str_value, "keypad") == 0)
 				wps_method = WPS_PIN_KEYPAD;
+			else if (os_strcmp(entry.str_value, "p2ps") == 0)
+				wps_method = WPS_P2PS;
 			else
 				goto inv_args_clear;
 		} else if (os_strcmp(entry.key, "pin") == 0 &&
@@ -878,6 +880,132 @@ DBusMessage * wpas_dbus_handler_p2p_prov_disc_req(DBusMessage *message,
 				"Failed to send provision discovery request");
 
 	return NULL;
+}
+
+DBusMessage * wpas_dbus_handler_p2p_asp_prov_disc_req(DBusMessage *message,
+		  struct wpa_supplicant *wpa_s)
+{
+	DBusMessage *reply = NULL;
+	DBusMessageIter iter, iter_dict;
+	struct wpa_dbus_dict_entry entry;
+	struct p2ps_provision temp_prov, *p2ps_prov;
+	char *peer_object_path = NULL;
+	char *info = NULL;
+	size_t info_len = 0;
+	int i;
+
+	u8 addr[ETH_ALEN];
+	u8 zero_mac[ETH_ALEN] = {0,};
+	u8 role = P2PS_SETUP_NONE;
+
+	if (!wpa_dbus_p2p_check_enabled(wpa_s, message, &reply, NULL))
+		return reply;
+
+	os_memset(&temp_prov, 0, sizeof(struct p2ps_provision));
+	temp_prov.status = -1;
+
+	dbus_message_iter_init(message, &iter);
+
+	if (!wpa_dbus_dict_open_read(&iter, &iter_dict, NULL))
+		goto inv_args;
+
+	while (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
+		if (!wpa_dbus_dict_get_entry(&iter_dict, &entry))
+			goto inv_args;
+
+		if (os_strcmp(entry.key, "peer") == 0 &&
+		    entry.type == DBUS_TYPE_OBJECT_PATH) {
+			peer_object_path = os_strdup(entry.str_value);
+		} else if (os_strcmp(entry.key, "adv_id") == 0 &&
+			   entry.type == DBUS_TYPE_UINT32) {
+			temp_prov.adv_id = entry.uint32_value;
+			if(temp_prov.adv_id > 0xffffffffULL)
+				goto inv_args_clear;
+		} else if (os_strcmp(entry.key, "session_id") == 0 &&
+			   entry.type == DBUS_TYPE_UINT32) {
+			temp_prov.session_id = entry.uint32_value;
+		} else if (os_strcmp(entry.key, "adv_mac") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+					entry.array_type != DBUS_TYPE_BYTE ||
+					entry.array_len != ETH_ALEN)
+				goto inv_args_clear;
+			os_memcpy(temp_prov.adv_mac, entry.bytearray_value, ETH_ALEN);
+		} else if (os_strcmp(entry.key, "session_mac") == 0) {
+			if (entry.type != DBUS_TYPE_ARRAY ||
+					entry.array_type != DBUS_TYPE_BYTE ||
+					entry.array_len != ETH_ALEN)
+				goto inv_args_clear;
+			os_memcpy(temp_prov.session_mac, entry.bytearray_value, ETH_ALEN);
+		} else if (os_strcmp(entry.key, "method") == 0 &&
+				   entry.type == DBUS_TYPE_INT32) {
+			temp_prov.method = entry.int32_value;
+		} else if (os_strcmp(entry.key, "conncap") == 0 &&
+				   entry.type == DBUS_TYPE_BYTE) {
+			temp_prov.conncap = entry.byte_value;
+		} else if (os_strcmp(entry.key, "role") == 0 &&
+			   entry.type == DBUS_TYPE_BYTE) {
+			role = entry.byte_value;
+			if (role != P2PS_SETUP_CLIENT &&
+					role != P2PS_SETUP_GROUP_OWNER)
+				role = P2PS_SETUP_NONE;
+			temp_prov.role = role;
+		} else if (os_strcmp(entry.key, "status") == 0 &&
+				   entry.type == DBUS_TYPE_INT32) {
+				temp_prov.status = entry.int32_value;
+		} else if (os_strcmp(entry.key, "info") == 0 &&
+			   entry.type == DBUS_TYPE_STRING) {
+			info = os_strdup(entry.str_value);
+		} else
+			goto inv_args_clear;
+
+		wpa_dbus_dict_entry_clear(&entry);
+	}
+
+	if (parse_peer_object_path(peer_object_path, addr) < 0 ||
+			!p2p_peer_known(wpa_s->global->p2p, addr))
+		goto inv_args;
+
+	if(temp_prov.adv_id == 0 || temp_prov.session_id == 0 ||
+			os_memcmp(temp_prov.adv_mac, zero_mac, ETH_ALEN) == 0 ||
+			os_memcmp(temp_prov.session_mac, zero_mac, ETH_ALEN) == 0)
+		goto inv_args;
+
+	if(info)
+		info_len = os_strlen(info);
+
+	p2ps_prov = os_zalloc(sizeof(struct p2ps_provision) + info_len + 1);
+	if (p2ps_prov == NULL)
+		goto inv_args;
+
+	os_memcpy(p2ps_prov, &temp_prov, sizeof(struct p2ps_provision));
+
+	if (info) {
+		os_memcpy(p2ps_prov->info, info, info_len);
+		p2ps_prov->info[info_len] = '\0';
+		os_free(info);
+	}
+
+	p2ps_prov->cpt_priority[0] = P2PS_FEATURE_CAPAB_UDP_TRANSPORT;
+	for (i = 0; p2ps_prov->cpt_priority[i]; i++)
+		p2ps_prov->cpt_mask |= p2ps_prov->cpt_priority[i];
+
+	wpa_s = wpa_s->global->p2p_init_wpa_s;
+
+	if (wpas_p2p_prov_disc(wpa_s, addr, NULL,
+			WPAS_P2P_PD_FOR_ASP, p2ps_prov) < 0)
+		reply = wpas_dbus_error_unknown_error(message,
+				"Failed to send provision discovery request");
+
+out:
+	os_free(peer_object_path);
+	return reply;
+inv_args_clear:
+	wpa_dbus_dict_entry_clear(&entry);
+inv_args:
+	os_free(info);
+	reply = wpas_dbus_error_invalid_args(message, NULL);
+	goto out;
+
 }
 
 
