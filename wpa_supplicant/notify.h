@@ -115,6 +115,16 @@ void wpas_notify_p2p_provision_discovery(struct wpa_supplicant *wpa_s,
 					 enum p2p_prov_disc_status status,
 					 u16 config_methods,
 					 unsigned int generated_pin);
+void wpas_notify_p2p_provision_discovery_failure(struct wpa_supplicant *wpa_s,
+					 const u8 *dev_addr, enum p2p_prov_disc_status status,
+					 u32 adv_id, const char *deferred_session_resp);
+void wpas_notify_p2p_asp_provision_start(struct wpa_supplicant *wpa_s,
+					 const u8 *dev, struct p2ps_provision *p2ps_prov,
+					 int dev_passwd_id, const char *session_info);
+void wpas_notify_p2p_asp_provision_done(struct wpa_supplicant *wpa_s,
+					 const u8 *dev, struct p2ps_provision *p2ps_prov,
+					 const u8 *group_mac, int passwd_id, struct wpa_ssid *ssid,
+					 const char *go_ifname);
 void wpas_notify_p2p_group_started(struct wpa_supplicant *wpa_s,
 				   struct wpa_ssid *ssid, int network_id,
 				   int client);
