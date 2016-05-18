@@ -117,6 +117,7 @@ DECLARE_ACCESSOR(wpas_dbus_getter_p2p_peer_vendor_extension);
 DECLARE_ACCESSOR(wpas_dbus_getter_p2p_peer_ies);
 DECLARE_ACCESSOR(wpas_dbus_getter_p2p_peer_device_address);
 DECLARE_ACCESSOR(wpas_dbus_getter_p2p_peer_groups);
+DECLARE_ACCESSOR(wpas_dbus_getter_p2p_peer_advertise_service);
 #if defined TIZEN_EXT
 DECLARE_ACCESSOR(wpas_dbus_getter_p2p_peer_interface_address);
 DECLARE_ACCESSOR(wpas_dbus_getter_p2p_peer_go_device_address);

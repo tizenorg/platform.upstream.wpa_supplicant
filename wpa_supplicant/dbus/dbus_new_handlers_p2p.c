@@ -2155,6 +2155,33 @@ dbus_bool_t wpas_dbus_getter_p2p_peer_go_device_address(
 }
 #endif /* TIZEN_EXT */
 
+
+dbus_bool_t wpas_dbus_getter_p2p_peer_advertise_service(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
+{
+	struct peer_handler_args *peer_args = user_data;
+	const struct p2p_peer_info *info;
+
+	info = p2p_get_peer_found(peer_args->wpa_s->global->p2p,
+				  peer_args->p2p_device_addr, 0);
+	if (info == NULL) {
+		dbus_set_error(error, DBUS_ERROR_FAILED,
+			       "failed to find peer");
+		return FALSE;
+	}
+
+	if (info->p2ps_instance == NULL)
+		return wpas_dbus_simple_array_property_getter(iter,
+							      DBUS_TYPE_BYTE,
+							      NULL, 0, error);
+
+	return wpas_dbus_simple_array_property_getter(
+		iter, DBUS_TYPE_BYTE, (char *) info->p2ps_instance->buf,
+		info->p2ps_instance->used, error);
+}
+
+
 /**
  * wpas_dbus_getter_persistent_groups - Get array of persistent group objects
  * @iter: Pointer to incoming dbus message iter

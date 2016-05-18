@@ -4163,6 +4163,11 @@ static const struct wpa_dbus_property_desc wpas_dbus_p2p_peer_properties[] = {
 	  NULL,
 	  NULL
 	},
+	{ "AdvertiseService", WPAS_DBUS_NEW_IFACE_P2P_PEER, "ay",
+			wpas_dbus_getter_p2p_peer_advertise_service,
+	  NULL,
+	  NULL
+	},
 	{ NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
