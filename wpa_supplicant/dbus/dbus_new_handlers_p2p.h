@@ -39,6 +39,9 @@ DBusMessage *wpas_dbus_handler_p2p_presence_request(
 DBusMessage *wpas_dbus_handler_p2p_prov_disc_req(
 	DBusMessage *message, struct wpa_supplicant *wpa_s);
 
+DBusMessage *wpas_dbus_handler_p2p_asp_prov_disc_req(
+	DBusMessage *message, struct wpa_supplicant *wpa_s);
+
 DBusMessage *wpas_dbus_handler_p2p_group_add(
 	DBusMessage *message, struct wpa_supplicant *wpa_s);
 
