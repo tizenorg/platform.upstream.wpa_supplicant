@@ -5835,6 +5835,13 @@ int wpas_p2p_group_add(struct wpa_supplicant *wpa_s, int persistent_group,
 	p2p_go_params(wpa_s->global->p2p, &params);
 	params.persistent_group = persistent_group;
 
+#ifdef TIZEN_EXT
+        if (passphrase) {
+                os_memset(params.passphrase, 0, 64);
+                os_memcpy(params.passphrase, passphrase, os_strlen(passphrase));
+        }
+#endif /* TIZEN_EXT */
+
 	wpa_s = wpas_p2p_get_group_iface(wpa_s, 0, 1);
 	if (wpa_s == NULL)
 		return -1;
