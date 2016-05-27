@@ -1357,7 +1357,11 @@ static void wpas_group_formation_completed(struct wpa_supplicant *wpa_s,
 	if (network_id < 0 && ssid)
 		network_id = ssid->id;
 	if (!client) {
+#ifdef TIZEN_EXT
+		wpas_notify_p2p_group_started(wpa_s, ssid, network_id, 0, persistent);
+#else /* TIZEN_EXT */
 		wpas_notify_p2p_group_started(wpa_s, ssid, network_id, 0);
+#endif /* TIZEN_EXT */
 		os_get_reltime(&wpa_s->global->p2p_go_wait_client);
 	}
 }
@@ -1748,7 +1752,11 @@ static void p2p_go_configured(void *ctx, void *data)
 		}
 		if (network_id < 0)
 			network_id = ssid->id;
+#ifdef TIZEN_EXT
+		wpas_notify_p2p_group_started(wpa_s, ssid, network_id, 0, params->persistent_group);
+#else /* TIZEN_EXT */
 		wpas_notify_p2p_group_started(wpa_s, ssid, network_id, 0);
+#endif /* TIZEN_EXT */
 		wpas_p2p_cross_connect_setup(wpa_s);
 		wpas_p2p_set_group_idle_timeout(wpa_s);
 
@@ -6715,7 +6723,11 @@ void wpas_p2p_completed(struct wpa_supplicant *wpa_s)
 							     ssid, go_dev_addr);
 	if (network_id < 0)
 		network_id = ssid->id;
+#ifdef TIZEN_EXT
+	wpas_notify_p2p_group_started(wpa_s, ssid, network_id, 1, persistent);
+#else /* TIZEN_EXT */
 	wpas_notify_p2p_group_started(wpa_s, ssid, network_id, 1);
+#endif /* TIZEN_EXT */
 }
 
 

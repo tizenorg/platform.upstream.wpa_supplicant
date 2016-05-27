@@ -127,7 +127,11 @@ void wpas_notify_p2p_asp_provision_done(struct wpa_supplicant *wpa_s,
 					 const char *go_ifname);
 void wpas_notify_p2p_group_started(struct wpa_supplicant *wpa_s,
 				   struct wpa_ssid *ssid, int network_id,
+#ifdef TIZEN_EXT
+				   int client, int persistent);
+#else /* TIZEN_EXT */
 				   int client);
+#endif /* TIZEN_EXT */
 void wpas_notify_p2p_group_formation_failure(struct wpa_supplicant *wpa_s,
 					     const char *reason);
 void wpas_notify_persistent_group_added(struct wpa_supplicant *wpa_s,

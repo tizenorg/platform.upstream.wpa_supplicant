@@ -1,6 +1,6 @@
 Name:           wpa_supplicant
 Version:        2.5
-Release:        15
+Release:        16
 License:        BSD-2.0 and GPL-2.0+
 Summary:        WPA supplicant implementation
 Url:            http://hostap.epitest.fi/wpa_supplicant/

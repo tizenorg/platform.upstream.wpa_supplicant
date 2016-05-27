@@ -1507,7 +1507,11 @@ static void peer_groups_changed(struct wpa_supplicant *wpa_s)
  */
 void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 					const struct wpa_ssid *ssid,
+#ifdef TIZEN_EXT
+					int client, int network_id, int persistent)
+#else /* TIZEN_EXT */
 					int client, int network_id)
+#endif /* TIZEN_EXT */
 {
 	DBusMessage *msg;
 	DBusMessageIter iter, dict_iter;
@@ -1549,6 +1553,10 @@ void wpas_dbus_signal_p2p_group_started(struct wpa_supplicant *wpa_s,
 					      wpa_s->dbus_new_path) ||
 	    !wpa_dbus_dict_append_string(&dict_iter, "role",
 					 client ? "client" : "GO") ||
+#if defined TIZEN_EXT
+	    !wpa_dbus_dict_append_bool(&dict_iter, "persistent",
+					 persistent ? 1 : 0) ||
+#endif /* TIZEN_EXT */
 	    !wpa_dbus_dict_append_object_path(&dict_iter, "group_object",
 					      wpa_s->dbus_groupobj_path))
 		goto err;

@@ -680,12 +680,20 @@ void wpas_notify_p2p_asp_provision_done(struct wpa_supplicant *wpa_s,
 
 void wpas_notify_p2p_group_started(struct wpa_supplicant *wpa_s,
 				   struct wpa_ssid *ssid, int network_id,
+#ifdef TIZEN_EXT
+				   int client, int persistent)
+#else /* TIZEN_EXT */
 				   int client)
+#endif /* TIZEN_EXT */
 {
 	/* Notify a group has been started */
 	wpas_dbus_register_p2p_group(wpa_s, ssid);
 
+#ifdef TIZEN_EXT
+	wpas_dbus_signal_p2p_group_started(wpa_s, ssid, client, network_id, persistent);
+#else /* TIZEN_EXT */
 	wpas_dbus_signal_p2p_group_started(wpa_s, ssid, client, network_id);
+#endif /* TIZEN_EXT */
 }
 
 
