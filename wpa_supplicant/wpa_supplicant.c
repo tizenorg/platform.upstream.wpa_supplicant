@@ -760,7 +760,7 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s,
 		struct wpa_ssid *ssid = wpa_s->current_ssid;
 #if defined(CONFIG_CTRL_IFACE) || !defined(CONFIG_NO_STDOUT_DEBUG)
 #ifdef TIZEN_EXT_P2P
-		if (wpa_s->ifname && (os_strcmp(wpa_s->ifname , "p2p-wlan0-0") == 0))
+		if (os_strcmp(wpa_s->ifname , "p2p-wlan0-0") == 0)
 			wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_CONNECTED "- Connection to "
 				MACSTR " completed [id=%d id_str=%s]",
 				MAC2STR(wpa_s->bssid),
