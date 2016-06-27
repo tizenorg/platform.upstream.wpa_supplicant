@@ -3727,6 +3727,13 @@ static const struct wpa_dbus_signal_desc wpas_dbus_interface_signals[] = {
 		  END_ARGS
 	  }
 	},
+	{ "DeviceFoundProperties", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+	  {
+		  { "path", "o", ARG_OUT },
+		  { "properties", "a{sv}", ARG_OUT },
+		  END_ARGS
+	  }
+	},
 	{ "DeviceLost", WPAS_DBUS_NEW_IFACE_P2PDEVICE,
 	  {
 		  { "path", "o", ARG_OUT },
@@ -4198,12 +4205,13 @@ static const struct wpa_dbus_signal_desc wpas_dbus_p2p_peer_signals[] = {
  *	In case of peer objects, it would be emitted by either
  *	the "interface object" or by "peer objects"
  * @sig_name: signal name - DeviceFound
+ * @properties: Whether to add a second argument with object properties
  *
- * Notify listeners about event related with newly found p2p peer device
+ * Notify listeners about event related with p2p peer device
  */
 static void wpas_dbus_signal_peer(struct wpa_supplicant *wpa_s,
 				  const u8 *dev_addr, const char *interface,
-				  const char *sig_name)
+				  const char *sig_name, int properties)
 {
 	struct wpas_dbus_priv *iface;
 	DBusMessage *msg;
@@ -4231,7 +4239,10 @@ static void wpas_dbus_signal_peer(struct wpa_supplicant *wpa_s,
 	dbus_message_iter_init_append(msg, &iter);
 	path = peer_obj_path;
 	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
-					    &path))
+					    &path) ||
+	    (properties && !wpa_dbus_get_object_properties(
+		    iface, peer_obj_path, WPAS_DBUS_NEW_IFACE_P2P_PEER,
+		    &iter)))
 		wpa_printf(MSG_ERROR, "dbus: Failed to construct signal");
 	else
 		dbus_connection_send(iface->con, msg, NULL);
@@ -4252,7 +4263,11 @@ void wpas_dbus_signal_peer_device_found(struct wpa_supplicant *wpa_s,
 {
 	wpas_dbus_signal_peer(wpa_s, dev_addr,
 			      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
-			      "DeviceFound");
+			      "DeviceFound", FALSE);
+
+	wpas_dbus_signal_peer(wpa_s, dev_addr,
+			      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
+			      "DeviceFoundProperties", TRUE);
 }
 
 /**
@@ -4267,7 +4282,7 @@ void wpas_dbus_signal_peer_device_lost(struct wpa_supplicant *wpa_s,
 {
 	wpas_dbus_signal_peer(wpa_s, dev_addr,
 			      WPAS_DBUS_NEW_IFACE_P2PDEVICE,
-			      "DeviceLost");
+			      "DeviceLost", FALSE);
 }
 
 /**
