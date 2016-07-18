@@ -11,6 +11,10 @@
 
 #include "common/ieee802_11_defs.h"
 #include "wps/wps.h"
+#if defined TIZEN_EXT_ASP
+#include "utils/list.h"
+#endif
+
 
 /* P2P ASP Setup Capability */
 #define P2PS_SETUP_NONE 0
@@ -230,6 +234,14 @@ struct p2ps_provision {
 	char info[0];
 };
 
+#if defined TIZEN_EXT_ASP
+struct p2p_srv_asp2 {
+	struct dl_list list;
+	char *key;
+	char *value;
+};
+#endif
+
 struct p2ps_advertisement {
 	struct p2ps_advertisement *next;
 
@@ -238,6 +250,13 @@ struct p2ps_advertisement {
 	 */
 	char *svc_info;
 
+	/**
+	* instant name - This parameter carries the Instance Name of a
+	* Service Type being advertised.
+	*/
+#if defined TIZEN_EXT_ASP
+	char *instance_name;
+#endif
 	/**
 	 * id - P2PS Advertisement ID
 	 */
@@ -279,6 +298,14 @@ struct p2ps_advertisement {
 	 * The CPT priority list is 0 terminated.
 	 */
 	u8 cpt_priority[P2PS_FEATURE_CAPAB_CPT_MAX + 1];
+
+	/**
+	* struct p2p_srv_asp2 : Prepare list to keep <key,value>records
+	*/
+
+#if defined TIZEN_EXT_ASP
+	struct dl_list p2p_srv_asp2;
+#endif
 
 	/**
 	 * svc_name - NULL Terminated UTF-8 Service Name, and svc_info storage
@@ -2318,6 +2345,14 @@ int p2p_service_add_asp(struct p2p_data *p2p, int auto_accept, u32 adv_id,
 			const char *adv_str, u8 svc_state,
 			u16 config_methods, const char *svc_info,
 			const u8 *cpt_priority);
+
+#if defined TIZEN_EXT_ASP
+int p2p_service_add_asp2(struct p2p_data *p2p, int auto_accept, u32 adv_id,
+			const char *adv_str, u8 svc_state,
+			u16 config_methods, const char *svc_info,
+			const u8 *cpt_priority,
+			const char *instance_name);
+#endif
 int p2p_service_del_asp(struct p2p_data *p2p, u32 adv_id);
 void p2p_service_flush_asp(struct p2p_data *p2p);
 struct p2ps_advertisement * p2p_get_p2ps_adv_list(struct p2p_data *p2p);
