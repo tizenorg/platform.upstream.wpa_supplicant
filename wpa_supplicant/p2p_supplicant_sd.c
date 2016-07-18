@@ -1187,12 +1187,16 @@ int wpas_p2p_service_del_asp(struct wpa_supplicant *wpa_s, u32 adv_id)
 	return ret;
 }
 
-
 int wpas_p2p_service_add_asp(struct wpa_supplicant *wpa_s,
 			     int auto_accept, u32 adv_id,
 			     const char *adv_str, u8 svc_state,
 			     u16 config_methods, const char *svc_info,
+#if defined TIZEN_EXT_ASP
+			     const u8 *cpt_priority,
+			     const char *instance_name)
+#else
 			     const u8 *cpt_priority)
+#endif
 {
 	int ret;
 
