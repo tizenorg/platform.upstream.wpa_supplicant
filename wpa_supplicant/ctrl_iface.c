@@ -5093,7 +5093,57 @@ static int p2p_ctrl_serv_disc_req(struct wpa_supplicant *wpa_s, char *cmd,
 
 		ref = wpas_p2p_sd_request_asp(wpa_s, dst, (u8) id,
 					      svc_str, svc_info);
-	} else {
+	}
+
+#if defined TIZEN_EXT_ASP
+	else if (os_strncmp(pos, "asp2 ", 5) == 0) {
+		char *svc_str;
+		char *svc_info = NULL;
+		char *svc_instance = NULL;
+		u32 id;
+		pos += 5;
+		if (sscanf(pos, "%x", &id) != 1 || id > 0xff)
+			return -1;
+
+		pos = os_strchr(pos, ' ');
+		if (pos == NULL || pos[1] == '\0' || pos[1] == ' ')
+			return -1;
+
+		svc_str = pos + 1;
+		pos = os_strchr(svc_str, ' ');
+		if (pos)
+			*pos++ = '\0';
+
+		/* Service Instance is optional */
+		if (pos && pos[0]) {
+			svc_instance = os_strstr(pos, "svc_instance=");
+			if (svc_instance) {
+				svc_instance += 13;
+			}
+		}
+
+		/** Service Information is optional
+		 * If available, format of svc_info is
+		 *  <key1,key2,key3,...>
+		 */
+
+		if (pos && pos[0]) {
+			size_t len;
+			svc_info = os_strstr(pos, "svc_info='");
+			if (svc_info) {
+				svc_info += 9;
+				len = os_strlen(svc_info);
+				utf8_unescape(svc_info, len, svc_info, len);
+			}
+		}
+
+		ref = wpas_p2p_sd_request_asp2(wpa_s, dst, (u8) id,
+					       svc_str, svc_info,svc_instance);
+	}
+#endif
+
+
+	else {
 		len = os_strlen(pos);
 		if (len & 1)
 			return -1;
