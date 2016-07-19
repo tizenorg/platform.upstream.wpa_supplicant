@@ -685,6 +685,221 @@ static void wpas_sd_all_asp(struct wpa_supplicant *wpa_s,
 		wpas_sd_req_asp(wpa_s, resp, srv_trans_id, q, sizeof(q));
 }
 
+#if defined TIZEN_EXT_ASP
+static struct p2p_srv_asp2 *
+find_key_value_record(struct p2ps_advertisement *adv_data,
+		      const char *key)
+{
+	struct p2p_srv_asp2 *asrv;
+	wpa_printf(MSG_DEBUG, "P2P: Find the value of key=%s",key);
+
+	if (dl_list_empty(&adv_data->p2p_srv_asp2))
+		return NULL;
+	dl_list_for_each(asrv, &adv_data->p2p_srv_asp2,
+			 struct p2p_srv_asp2, list) {
+		if (os_memcmp(asrv->key,key,os_strlen(key)) == 0) {
+			wpa_printf(MSG_DEBUG, "P2P: Key [%s] Found, value is %s",
+				   asrv->key,asrv->value);
+			break;
+		}
+	}
+
+	return asrv;
+}
+
+static void wpas_sd_req_asp2(struct wpa_supplicant *wpa_s,
+			     struct wpabuf *resp, u8 srv_trans_id,
+			     const u8 *query, size_t query_len)
+
+{
+	struct p2ps_advertisement *adv_data;
+	const u8 *svc = &query[1];
+	const u8 *info = NULL;
+	size_t svc_len = query[0];
+	size_t info_len = 0;
+	u8 *count_pos = NULL;
+	u8 *len_pos = NULL;
+	size_t instance_len = 0;
+	const u8 *instance_name = NULL;
+	struct p2p_srv_asp2 *asrv;
+	char *str1, *token;
+	char *ptr = NULL;
+	char *saveptr1;
+	int j;
+
+	/*Added to for temp storage of Service Discovery Response*/
+	char buf[2000];
+	size_t svc_res_len = 0;
+
+	wpa_hexdump(MSG_DEBUG, "P2P:SD Request for ASP2", query, query_len);
+
+	if (!wpa_s->global->p2p) {
+		wpa_printf(MSG_DEBUG, "P2P: ASP protocol not available");
+		wpas_sd_add_proto_not_avail(resp, P2P_SERV_ASP, srv_trans_id);
+		return;
+	}
+
+	/* Service Instance block is optional */
+	if (svc_len + 1 < query_len) {
+		instance_name = &svc[svc_len];
+		instance_len = *instance_name++;
+		wpa_printf(MSG_DEBUG, "P2P: Instance Name :[%s]",instance_name);
+
+	}
+
+	/* Service Info block is optional */
+	if (instance_len + svc_len + 1 + 1< query_len) {
+		info = &svc[svc_len + instance_len + 1];
+		info_len = *info++;
+		wpa_printf(MSG_DEBUG, "P2P: info: [%s],info_len [%u]",info,(unsigned int)info_len);
+	}
+
+	/* Range check length of svc string and info block */
+	if (svc_len + (instance_len ? instance_len + 1 : 1) +
+	    (info_len ? info_len + 2 : 1) > query_len) {
+		wpa_printf(MSG_DEBUG, "P2P: ASP bad request");
+		wpas_sd_add_bad_request(resp, P2P_SERV_ASP, srv_trans_id);
+		return;
+	}
+
+	for (adv_data = p2p_get_p2ps_adv_list(wpa_s->global->p2p);
+	     adv_data; adv_data = adv_data->next) {
+
+		/*Compare with Service and corresponding Instance name*/
+		if (os_memcmp(adv_data->svc_name, svc, svc_len) == 0 &&
+		    os_memcmp(adv_data->instance_name, instance_name,
+			      instance_len) == 0) {
+
+			wpa_printf(MSG_DEBUG, "P2P: Service Found");
+
+			if (info_len > 1) {
+				wpa_printf(MSG_DEBUG, "P2P:Service Seeker required the"
+					   "values of specific keys");
+
+				/**Extract the keys from Service Discovery Request and
+				 * found the values
+				 */
+				ptr = os_strdup((const char *)info);
+				svc_res_len = 0;
+
+				for (j = 1, str1 = ptr; ; j++, str1 = NULL) {
+					token = strtok_r(str1, ",", &saveptr1);
+					if (token == NULL)
+						break;
+
+					if (svc_res_len > 0) {
+						os_snprintf((buf + svc_res_len),2000,",");
+						svc_res_len++;
+					}
+
+					asrv = find_key_value_record(adv_data,token);
+					if (asrv == NULL) {
+						wpa_printf(MSG_DEBUG, "P2P: ASP2 Keys not found");
+						wpas_sd_add_not_found(resp, P2P_SERV_ASP,
+								      srv_trans_id);
+						return;
+					}
+					os_snprintf((buf + svc_res_len),2000,"%s=%s",
+						    asrv->key,asrv->value);
+					svc_res_len  = svc_res_len + os_strlen(asrv->key) +
+						os_strlen(asrv->value);
+					svc_res_len++;
+				}
+				os_free(ptr);
+			}
+
+			else {
+				wpa_printf(MSG_DEBUG, "P2P: Service Seeker required  all "
+					   "<key=value> pair records.");
+				if (dl_list_empty(&adv_data->p2p_srv_asp2)) {
+					wpa_printf(MSG_DEBUG, "P2P: ASP2 Keys not found");
+					wpas_sd_add_not_found(resp, P2P_SERV_ASP, srv_trans_id);
+					return;
+				}
+
+				svc_res_len = 0;
+				dl_list_for_each(asrv, &adv_data->p2p_srv_asp2,
+						 struct p2p_srv_asp2, list) {
+					wpa_printf(MSG_DEBUG, "P2P: Key found %s, value :%s",
+						   asrv->key,asrv->value);
+					/*Append in Buffer */
+					if (svc_res_len) {
+						os_snprintf((buf + svc_res_len),2000,",");
+						svc_res_len++;
+					}
+					os_snprintf((buf + svc_res_len),2000,"%s=%s",
+						    asrv->key,asrv->value);
+					svc_res_len = svc_res_len + os_strlen(asrv->key) +
+						os_strlen(asrv->value);
+					svc_res_len++;
+				}
+			}
+
+			wpa_printf(MSG_DEBUG, "P2P: Service Information Response: %s",buf);
+
+			size_t len = os_strlen(adv_data->svc_name);
+			if (len > 0xff || svc_res_len > 0xffff)
+				return;
+
+			/* Length & Count to be filled as we go */
+			if (!len_pos && !count_pos) {
+				if (wpabuf_tailroom(resp) <
+				    len + svc_res_len + 16)
+					return;
+
+				len_pos = wpabuf_put(resp, 2);
+				wpabuf_put_u8(resp, P2P_SERV_ASP);
+				wpabuf_put_u8(resp, srv_trans_id);
+				/* Status Code */
+				wpabuf_put_u8(resp, P2P_SD_SUCCESS);
+				count_pos = wpabuf_put(resp, 1);
+				*count_pos = 0;
+			} else if (wpabuf_tailroom(resp) <
+				   len + svc_res_len + 10)
+				return;
+
+			if (svc_res_len) {
+				wpa_printf(MSG_DEBUG,
+					   "P2P: Add Svc: %s info: %s",
+					   adv_data->svc_name,
+					   buf);
+			} else {
+				wpa_printf(MSG_DEBUG, "P2P: Add Svc: %s",
+					   adv_data->svc_name);
+			}
+
+			/* Advertisement ID */
+			wpabuf_put_le32(resp, adv_data->id);
+
+			/* Config Methods */
+			wpabuf_put_be16(resp, adv_data->config_methods);
+
+			/* Service Name */
+			wpabuf_put_u8(resp, (u8) len);
+			wpabuf_put_data(resp, adv_data->svc_name, len);
+
+			/* Service State */
+			wpabuf_put_u8(resp, adv_data->state);
+
+			/* Service Information */
+			wpabuf_put_le16(resp, (u16) svc_res_len);
+			wpabuf_put_data(resp, buf, svc_res_len);
+
+			/* Update length and count */
+			(*count_pos)++;
+			WPA_PUT_LE16(len_pos,
+				     (u8 *) wpabuf_put(resp, 0) - len_pos - 2);
+		}
+	}
+
+	/* Return error if no matching svc found */
+	if (count_pos == NULL) {
+		wpa_printf(MSG_DEBUG, "P2P: ASP service not found");
+		wpas_sd_add_not_found(resp, P2P_SERV_ASP, srv_trans_id);
+	}
+}
+
+#endif
 
 void wpas_sd_request(void *ctx, int freq, const u8 *sa, u8 dialog_token,
 		     u16 update_indic, const u8 *tlvs, size_t tlvs_len)
@@ -790,6 +1005,13 @@ void wpas_sd_request(void *ctx, int freq, const u8 *sa, u8 dialog_token,
 			wpas_sd_req_asp(wpa_s, resp, srv_trans_id,
 					pos, tlv_end - pos);
 			break;
+
+#if defined TIZEN_EXT_ASP
+		case P2P_SERV_ASP:
+			wpas_sd_req_asp2(wpa_s, resp, srv_trans_id,
+					pos, tlv_end - pos);
+			break;
+#endif
 		default:
 			wpa_printf(MSG_DEBUG, "P2P: Unavailable service "
 				   "protocol %u", srv_proto);
