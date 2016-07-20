@@ -387,6 +387,37 @@ static int p2p_parse_attribute(u8 id, const u8 *data, u16 len,
 					msg->persistent_ssid_len));
 		break;
 	}
+
+#if defined TIZEN_EXT_ASP
+	case P2P_ATTR_ASP_ADVERTISED_SERVICE:
+
+		wpa_printf(MSG_DEBUG,
+			   "P2P:Received ASP Advertised info");
+
+		if (len < 8) {
+			wpa_printf(MSG_DEBUG,
+				   "P2P: Too short ASP Advertised service (length %u)",
+				   len);
+			return -1;
+		}
+		msg->adv_asp_service_instance = data;
+		msg->adv_asp_service_instance_len = len;
+		if (len <= 255 + 8) {
+			char str[256];
+			u8 namelen;
+			namelen = data[6];
+			if (namelen > len - 7)
+				break;
+			os_memcpy(str, &data[7], namelen);
+			str[namelen] = '\0';
+			wpa_printf(MSG_DEBUG, "P2P: * Service Instance: %x-%s",
+				   WPA_GET_LE32(data), str);
+		} else {
+			wpa_printf(MSG_DEBUG, "P2P: * Service Instance: %p",
+				   data);
+		}
+	break;
+#endif
 	default:
 		wpa_printf(MSG_DEBUG, "P2P: Skipped unknown attribute %d "
 			   "(length %d)", id, len);
