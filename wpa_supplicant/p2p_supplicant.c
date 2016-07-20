@@ -2283,8 +2283,78 @@ static void wpas_dev_found(void *ctx, const u8 *addr,
 				       info->vendor_elems ?
 				       " vendor_elems=1" : "");
 		}
+#if defined TIZEN_EXT_ASP
+		if(!info->asp_instance)
+			goto done;
+#else
+		goto done;
+#endif
+	}
+
+#if defined TIZEN_EXT_ASP
+
+	if (info->asp_instance) {
+
+		wpa_printf(MSG_DEBUG, "P2P: ASP Information found");
+		char str[256];
+		char svc_instance[64];
+		const u8 *buf = wpabuf_head(info->asp_instance);
+		size_t len = wpabuf_len(info->asp_instance);
+
+		while (len) {
+			u32 id;
+			u16 methods;
+			u8 str_len;
+			u8 instant_len;
+
+			if (len < 4 + 2 + 1 + 1)
+				break;
+
+			id = WPA_GET_LE32(buf);
+			buf += sizeof(u32);
+			methods = WPA_GET_BE16(buf);
+			buf += sizeof(u16);
+			str_len = *buf++;
+
+			if (str_len > len - 4 - 2 - 1)
+				break;
+			os_memcpy(str, buf, str_len);
+
+			str[str_len] = '\0';
+			buf += str_len;
+
+			instant_len = *buf++;
+
+			if (instant_len > len - 4 - 2 - 1 -1)
+				break;
+			os_memcpy(svc_instance, buf, instant_len);
+			svc_instance[instant_len] = '\0';
+
+			buf += instant_len;
+			len -= str_len + sizeof(u32) + sizeof(u16) + sizeof(u8)
+				+ instant_len + sizeof(u8);
+			wpa_msg_global(wpa_s, MSG_INFO,
+				       P2P_EVENT_DEVICE_FOUND MACSTR
+				       " p2p_dev_addr=" MACSTR
+				       " pri_dev_type=%s name='%s'"
+				       " config_methods=0x%x"
+				       " dev_capab=0x%x"
+				       " group_capab=0x%x"
+				       " adv_id=%x asp_svc=%s asp_instance=%s%s",
+				       MAC2STR(addr),
+				       MAC2STR(info->p2p_device_addr),
+				       wps_dev_type_bin2str(
+						 info->pri_dev_type,
+						 devtype, sizeof(devtype)),
+				       info->device_name, methods,
+				       info->dev_capab, info->group_capab,
+				       id, str,svc_instance,
+				       info->vendor_elems ?
+				       " vendor_elems=1" : "");
+		}
 		goto done;
 	}
+#endif
 
 	wpa_msg_global(wpa_s, MSG_INFO, P2P_EVENT_DEVICE_FOUND MACSTR
 		       " p2p_dev_addr=" MACSTR
@@ -2304,6 +2374,7 @@ done:
 	os_free(wfd_dev_info_hex);
 #endif /* CONFIG_NO_STDOUT_DEBUG */
 
+	/*TODO: Extend the Device Found Signal for D-Bus Interface*/
 	wpas_notify_p2p_device_found(ctx, info->p2p_device_addr, new_device);
 }
 
