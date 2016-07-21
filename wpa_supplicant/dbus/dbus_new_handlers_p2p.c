@@ -2859,6 +2859,10 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 	char *cpt_prio_str;
 	u8 cpt_prio[P2PS_FEATURE_CAPAB_CPT_MAX + 1];
 
+#if defined TIZEN_FEATURE_ASP
+	char *svc_instance = NULL;
+#endif
+
 	dbus_message_iter_init(message, &iter);
 
 	if (!wpa_dbus_dict_open_read(&iter, &iter_dict, NULL))
@@ -2942,7 +2946,16 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 			/* Service and Response Information are optional */
 			os_free(svc_info);
 			svc_info = os_strdup(entry.str_value);
-		} else if (os_strcmp(entry.key, "replace") == 0 &&
+		}
+#if defined TIZEN_FEATURE_ASP
+		else if (os_strcmp(entry.key, "svc_instance") == 0 &&
+					   entry.type == DBUS_TYPE_STRING) {
+			/* Service instance is  optional */
+			os_free(svc_instance);
+			svc_instance = os_strdup(entry.str_value);
+		}
+#endif
+		else if (os_strcmp(entry.key, "replace") == 0 &&
 			    entry.type == DBUS_TYPE_BOOLEAN) {
 			replace = entry.bool_value;
 		}
@@ -2981,7 +2994,12 @@ DBusMessage * wpas_dbus_handler_p2p_add_service(DBusMessage *message,
 
 		if(wpas_p2p_service_add_asp(wpa_s, auto_accept, adv_id, adv_str,
 				(u8) svc_state, (u16) config_methods,
-				svc_info, cpt_prio))
+				 svc_info,
+#if defined TIZEN_FEATURE_ASP
+				cpt_prio,svc_instance))
+#else
+				cpt_prio))
+#endif
 			goto error;
 
 	} else

@@ -5265,6 +5265,10 @@ static int p2p_ctrl_service_add_asp(struct wpa_supplicant *wpa_s,
 	char *cpt_prio_str;
 	u8 cpt_prio[P2PS_FEATURE_CAPAB_CPT_MAX + 1];
 
+#if defined TIZEN_FEATURE_ASP
+	char *svc_instance = NULL;
+#endif
+
 	pos = os_strchr(cmd, ' ');
 	if (pos == NULL)
 		return -1;
@@ -5349,6 +5353,17 @@ static int p2p_ctrl_service_add_asp(struct wpa_supplicant *wpa_s,
 		cpt_prio[1] = 0;
 	}
 
+#if defined TIZEN_FEATURE_ASP
+	/* Service Instance is optional */
+	if (pos && pos[0]) {
+		size_t len1;
+		svc_instance = os_strstr(pos, "svc_instance=");
+		if (svc_instance) {
+			svc_instance += 13;
+			len1 = os_strlen(svc_instance);
+		}
+	}
+#endif
 	/* Service and Response Information are optional */
 	if (pos && pos[0]) {
 		size_t len;
@@ -5365,8 +5380,12 @@ static int p2p_ctrl_service_add_asp(struct wpa_supplicant *wpa_s,
 	}
 
 	return wpas_p2p_service_add_asp(wpa_s, auto_accept, adv_id, adv_str,
-					(u8) svc_state, (u16) config_methods,
-					svc_info, cpt_prio);
+					(u8) svc_state, (u16) config_methods,svc_info,
+#if defined TIZEN_FEATURE_ASP
+					cpt_prio,svc_instance);
+#else
+					cpt_prio);
+#endif
 }
 
 
