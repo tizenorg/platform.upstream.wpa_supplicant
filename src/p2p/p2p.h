@@ -416,6 +416,12 @@ struct p2p_peer_info {
 	 * p2ps_instance - P2PS Application Service Info
 	 */
 	struct wpabuf *p2ps_instance;
+#if defined TIZEN_FEATURE_ASP
+	/**
+	 * asp_instance - ASP Application Service Info
+	 */
+	struct wpabuf *asp_instance;
+#endif
 };
 
 enum p2p_prov_disc_status {

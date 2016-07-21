@@ -646,6 +646,11 @@ struct p2p_message {
 
 	const u8 *pref_freq_list;
 	size_t pref_freq_list_len;
+
+#if defined TIZEN_FEATURE_ASP
+	const u8 *adv_asp_service_instance;
+	size_t adv_asp_service_instance_len;
+#endif
 };
 
 
