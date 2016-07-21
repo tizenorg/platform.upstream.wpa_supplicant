@@ -2207,7 +2207,13 @@ struct wpabuf * p2p_build_probe_resp_ies(struct p2p_data *p2p,
 	if (query_count) {
 		p2p_buf_add_service_instance(buf, p2p, query_count, query_hash,
 					     p2p->p2ps_adv_list);
+
+#if defined TIZEN_EXT_ASP
+		p2p_buf_add_asp_service_instance(buf, p2p, query_count, query_hash,
+						 p2p->p2ps_adv_list);
+#endif
 	}
+
 
 	return buf;
 }
