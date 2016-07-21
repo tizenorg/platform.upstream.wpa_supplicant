@@ -1152,6 +1152,9 @@ enum p2p_service_protocol_type {
 	P2P_SERV_WS_DISCOVERY = 3,
 	P2P_SERV_WIFI_DISPLAY = 4,
 	P2P_SERV_P2PS = 11,
+#if defined TIZEN_EXT_ASP
+	P2P_SERV_ASP = 12,
+#endif
 	P2P_SERV_VENDOR_SPECIFIC = 255
 };
 
