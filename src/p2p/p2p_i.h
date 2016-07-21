@@ -765,6 +765,11 @@ void p2p_buf_add_advertisement_id(struct wpabuf *buf, u32 id, const u8 *mac);
 void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
 				  u8 count, const u8 *hash,
 				  struct p2ps_advertisement *adv_list);
+#if defined TIZEN_EXT_ASP
+void p2p_buf_add_asp_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
+				  u8 count, const u8 *hash,
+				  struct p2ps_advertisement *adv_list);
+#endif
 void p2p_buf_add_session_id(struct wpabuf *buf, u32 id, const u8 *mac);
 void p2p_buf_add_feature_capability(struct wpabuf *buf, u16 len,
 				    const u8 *mask);
