@@ -83,6 +83,11 @@ u64 wpas_p2p_sd_request(struct wpa_supplicant *wpa_s, const u8 *dst,
 			const struct wpabuf *tlvs);
 u64 wpas_p2p_sd_request_asp(struct wpa_supplicant *wpa_s, const u8 *dst, u8 id,
 			    const char *svc_str, const char *info_substr);
+#if defined TIZEN_FEATURE_ASP
+u64 wpas_p2p_sd_request_asp2(struct wpa_supplicant *wpa_s, const u8 *dst, u8 id,
+			    const char *svc_str, const char *svc_info,
+			    const char* instance_name);
+#endif
 u64 wpas_p2p_sd_request_upnp(struct wpa_supplicant *wpa_s, const u8 *dst,
 			     u8 version, const char *query);
 u64 wpas_p2p_sd_request_wifi_display(struct wpa_supplicant *wpa_s,
