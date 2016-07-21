@@ -476,16 +476,39 @@ static int p2p_wfa_service_adv(struct p2p_data *p2p)
 static int p2p_buf_add_service_info(struct wpabuf *buf, struct p2p_data *p2p,
 				    u32 adv_id, u16 config_methods,
 				    const char *svc_name, u8 **ie_len, u8 **pos,
-				    size_t *total_len, u8 *attr_len)
+				    size_t *total_len,
+#if defined TIZEN_FEATURE_ASP
+					u8 *attr_len,const char *instance_name)
+#else
+					u8 *attr_len)
+#endif
 {
 	size_t svc_len;
 	size_t remaining;
 	size_t info_len;
 
-	p2p_dbg(p2p, "Add service info for %s (adv_id=%u)", svc_name, adv_id);
+#if defined TIZEN_FEATURE_ASP
+	size_t instance_len;
+#endif
 	svc_len = os_strlen(svc_name);
-	info_len = sizeof(adv_id) + sizeof(config_methods) + sizeof(u8) +
+
+#if defined TIZEN_FEATURE_ASP
+	if (instance_name) {
+		instance_len = os_strlen(instance_name);
+		info_len = sizeof(adv_id) + sizeof(config_methods) + sizeof(u8) +
+			svc_len + sizeof(u8) + instance_len;
+	}
+	else {
+		instance_len = 0;
+		info_len = sizeof(adv_id) + sizeof(config_methods) + sizeof(u8) +
 		svc_len;
+	}
+#else
+	info_len = sizeof(adv_id) + sizeof(config_methods) + sizeof(u8) +
+	svc_len;
+#endif
+
+	p2p_dbg(p2p, "(info_len=%d)", info_len);
 
 	if (info_len + *total_len > MAX_SVC_ADV_LEN) {
 		p2p_dbg(p2p,
@@ -575,9 +598,22 @@ static int p2p_buf_add_service_info(struct wpabuf *buf, struct p2p_data *p2p,
 		wpabuf_put_data(buf, svc_name, svc_len);
 		remaining -= svc_len;
 	}
-
 	p2p_buf_update_ie_hdr(buf, *ie_len);
 
+#if defined TIZEN_FEATURE_ASP
+	if (instance_name && instance_len > 0)  {
+		/* Add support of Instance Name Information in Probe Response Frame */
+		if (remaining > sizeof(u8)) {
+			wpabuf_put_u8(buf, instance_len);
+			remaining -= sizeof(u8);
+		}
+		if (remaining > instance_len) {
+			wpabuf_put_data(buf, instance_name, instance_len);
+			remaining -= instance_len;
+		}
+		p2p_buf_update_ie_hdr(buf, *ie_len);
+	}
+#endif
 	/* set *ie_len to NULL if a new IE has to be added on the next call */
 	if (!remaining)
 		*ie_len = NULL;
@@ -591,6 +627,7 @@ static int p2p_buf_add_service_info(struct wpabuf *buf, struct p2p_data *p2p,
 }
 
 
+
 void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
 				  u8 hash_count, const u8 *hash,
 				  struct p2ps_advertisement *adv_list)
@@ -600,6 +637,9 @@ void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
 	size_t total_len;
 	struct wpabuf *tmp_buf = NULL;
 	u8 *pos, *attr_len, *ie_len = NULL;
+#if defined TIZEN_FEATURE_ASP
+	int ret = 0;
+#endif
 
 	if (!adv_list || !hash || !hash_count)
 		return;
@@ -630,8 +670,13 @@ void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
 
 	if (p2ps_wildcard) {
 		/* org.wi-fi.wfds match found */
+#if !defined TIZEN_FEATURE_ASP
 		p2p_buf_add_service_info(tmp_buf, p2p, 0, 0, P2PS_WILD_HASH_STR,
-					 &ie_len, &pos, &total_len, attr_len);
+				 &ie_len, &pos, &total_len, attr_len);
+#else
+		p2p_buf_add_service_info(tmp_buf, p2p, 0, 0, P2PS_WILD_HASH_STR,
+				 &ie_len, &pos, &total_len, attr_len,NULL);
+#endif
 	}
 
 	/* add advertised service info of matching services */
@@ -639,9 +684,10 @@ void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
 	     adv = adv->next) {
 		const u8 *test = hash;
 		u8 i;
-
 		for (i = 0; i < hash_count; i++) {
 			/* exact name hash match */
+
+#if !defined TIZEN_FEATURE_ASP
 			if (os_memcmp(test, adv->hash, P2PS_HASH_LEN) == 0 &&
 			    p2p_buf_add_service_info(tmp_buf, p2p,
 						     adv->id,
@@ -651,7 +697,25 @@ void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
 						     &total_len,
 						     attr_len))
 				break;
+#else
 
+			if (os_memcmp(test, adv->hash, P2PS_HASH_LEN) == 0) {
+				if (NULL == adv->instance_name) {
+					wpa_printf(MSG_DEBUG, "P2P Specfic service");
+					ret = p2p_buf_add_service_info(tmp_buf,
+								       p2p,
+								       adv->id,
+								       adv->config_methods,
+								       adv->svc_name,
+								       &ie_len, &pos,
+								       &total_len,
+								       attr_len,
+								       NULL);
+				}
+				if (ret)
+					break;
+			}
+#endif
 			test += P2PS_HASH_LEN;
 		}
 	}
@@ -661,6 +725,77 @@ void p2p_buf_add_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
 	wpabuf_free(tmp_buf);
 }
 
+#if defined TIZEN_FEATURE_ASP
+void p2p_buf_add_asp_service_instance(struct wpabuf *buf, struct p2p_data *p2p,
+				      u8 hash_count, const u8 *hash,
+				      struct p2ps_advertisement *adv_list)
+{
+	struct p2ps_advertisement *adv;
+	size_t total_len;
+	struct wpabuf *tmp_buf = NULL;
+	u8 *pos, *attr_len, *ie_len = NULL;
+	u8 ret = 0;
+
+	if (!adv_list || !hash || !hash_count)
+		return;
+
+	wpa_hexdump(MSG_DEBUG, "ASP:Probe Request service hash values",
+		    hash, hash_count * P2PS_HASH_LEN);
+
+	/* Allocate temp buffer, allowing for overflow of 1 instance */
+	tmp_buf = wpabuf_alloc(MAX_SVC_ADV_IE_LEN + 256 + P2PS_HASH_LEN);
+	if (!tmp_buf)
+		return;
+
+	/*
+	 * Attribute data can be split into a number of IEs. Start with the
+	 * first IE and the attribute headers here.
+	 */
+	ie_len = p2p_buf_add_ie_hdr(tmp_buf);
+	total_len = 0;
+
+	wpa_printf(MSG_DEBUG, "Added ASP Advertised Service Element ID ");
+	wpabuf_put_u8(tmp_buf, P2P_ATTR_ASP_ADVERTISED_SERVICE);
+	attr_len = wpabuf_put(tmp_buf, sizeof(u16));
+
+	WPA_PUT_LE16(attr_len, (u16) total_len);
+	p2p_buf_update_ie_hdr(tmp_buf, ie_len);
+	pos = wpabuf_put(tmp_buf, 0);
+
+
+	/* add advertised service info of matching services */
+	for (adv = adv_list; adv && total_len <= MAX_SVC_ADV_LEN;
+	     adv = adv->next) {
+		const u8 *test = hash;
+		u8 i;
+		for (i = 0; i < hash_count; i++) {
+			/* exact name hash match */
+			if (os_memcmp(test, adv->hash, P2PS_HASH_LEN) == 0) {
+				if (adv->instance_name) {
+					wpa_printf(MSG_DEBUG, "ASP: Service Instance Name is %s",
+						   adv->instance_name);
+					ret = p2p_buf_add_service_info(tmp_buf,
+								       p2p,
+								       adv->id,
+								       adv->config_methods,
+								       adv->svc_name,
+								       &ie_len, &pos,
+								       &total_len,
+								       attr_len,
+								       adv->instance_name);
+				}
+				if (ret)
+					break;
+			}
+			test += P2PS_HASH_LEN;
+		}
+	}
+
+	if (total_len)
+		wpabuf_put_buf(buf, tmp_buf);
+	wpabuf_free(tmp_buf);
+}
+#endif
 
 void p2p_buf_add_session_id(struct wpabuf *buf, u32 id, const u8 *mac)
 {
