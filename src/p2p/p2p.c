@@ -791,6 +791,13 @@ int p2p_add_device(struct p2p_data *p2p, const u8 *addr, int freq,
 		dev->info.p2ps_instance = wpabuf_alloc_copy(
 			msg.adv_service_instance, msg.adv_service_instance_len);
 	}
+#if defined TIZEN_EXT_ASP
+	if (msg.adv_asp_service_instance && msg.adv_asp_service_instance_len) {
+		wpabuf_free(dev->info.asp_instance);
+		dev->info.asp_instance = wpabuf_alloc_copy(
+			msg.adv_asp_service_instance, msg.adv_asp_service_instance_len);
+	}
+#endif
 
 	if (freq >= 2412 && freq <= 2484 && msg.ds_params &&
 	    *msg.ds_params >= 1 && *msg.ds_params <= 14) {
@@ -928,7 +935,9 @@ static void p2p_device_free(struct p2p_data *p2p, struct p2p_device *dev)
 	wpabuf_free(dev->info.vendor_elems);
 	wpabuf_free(dev->go_neg_conf);
 	wpabuf_free(dev->info.p2ps_instance);
-
+#if defined TIZEN_EXT_ASP
+	wpabuf_free(dev->info.asp_instance);
+#endif
 	os_free(dev);
 }
 
