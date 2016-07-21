@@ -1200,9 +1200,19 @@ int wpas_p2p_service_add_asp(struct wpa_supplicant *wpa_s,
 {
 	int ret;
 
-	ret = p2p_service_add_asp(wpa_s->global->p2p, auto_accept, adv_id,
-				  adv_str, svc_state, config_methods,
-				  svc_info, cpt_priority);
+#if defined TIZEN_FEATURE_ASP
+	if(instance_name == NULL)
+#endif
+		ret = p2p_service_add_asp(wpa_s->global->p2p, auto_accept, adv_id,
+					  adv_str, svc_state, config_methods,
+					  svc_info, cpt_priority);
+#if defined TIZEN_FEATURE_ASP
+    else
+		ret = p2p_service_add_asp2(wpa_s->global->p2p, auto_accept, adv_id,
+				   adv_str, svc_state, config_methods,
+				   svc_info, cpt_priority,instance_name);
+#endif
+
 	if (ret == 0)
 		wpas_p2p_sd_service_update(wpa_s);
 	return ret;

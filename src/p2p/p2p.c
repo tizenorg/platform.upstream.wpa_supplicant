@@ -2765,6 +2765,183 @@ inserted:
 	return 0;
 }
 
+#if defined TIZEN_FEATURE_ASP
+/** Function: To parse the Service Information in <key,Value> format */
+void p2p_parse_svc_info_asp2(struct p2p_data *p2p,
+			     struct p2ps_advertisement *adv_data,
+			     char *svc_info)
+{
+	char *str1, *str2;
+	char *token, *subtoken;
+	char *ptr1, *ptr2;
+	int j;
+	char *buf = os_strdup(svc_info);
+	int count = 0;
+	struct p2p_srv_asp2 *asrv;
+
+	for (j = 1, str1 = buf; ; j++, str1 = NULL) {
+		token = strtok_r(str1, ",", &ptr1);
+		if (token == NULL)
+			break;
+
+		/**Allocate the Memory*/
+		count = 0;
+		asrv = os_zalloc(sizeof(*asrv));
+		if (asrv == NULL) {
+			os_free(buf);
+			return;
+		}
+
+		for (str2 = token; ; str2 = NULL) {
+			subtoken = strtok_r(str2, "=", &ptr2);
+			if (subtoken == NULL)
+				break;
+
+			count++;
+			if(count == 1)
+				asrv->key = os_strdup(subtoken);
+			else
+				asrv->value = os_strdup(subtoken);
+		}
+
+		/**Add the information in List*/
+		p2p_dbg(p2p,"Add Information in list <key=%s,value=%s>",
+			asrv->key, asrv->value);
+		dl_list_add(&adv_data->p2p_srv_asp2,&asrv->list);
+	}
+	os_free(buf);
+}
+
+int p2p_service_add_asp2(struct p2p_data *p2p, int auto_accept, u32 adv_id,
+			 const char *adv_str, u8 svc_state, u16 config_methods,
+			 const char *svc_info, const u8 *cpt_priority,
+			 const char *instance_name)
+
+{
+	struct p2ps_advertisement *adv_data, *tmp, **prev;
+	u8 buf[P2PS_HASH_LEN];
+	size_t adv_data_len, adv_len, info_len = 0, instance_len = 0;
+	int i;
+
+	p2p_dbg(p2p, "P2P: Add ASP2 Specific Service ");
+
+	//TODO: Service Type can be NULL(To advertise a specific Unique Identifier).
+	if (!p2p || !adv_str || !adv_str[0] || !cpt_priority)
+		return -1;
+
+	if (!(config_methods & p2p->cfg->config_methods)) {
+		p2p_dbg(p2p, "Config methods not supported svc: 0x%x dev: 0x%x",
+			config_methods, p2p->cfg->config_methods);
+		return -1;
+	}
+
+	//TODO: In case service type NULL, hash generation is defined by
+	//Instance Name.
+	if (!p2ps_gen_hash(p2p, adv_str, buf))
+		return -1;
+
+	if (svc_info)
+		info_len = os_strlen(svc_info);
+
+	if (instance_name)
+		instance_len = os_strlen(instance_name);
+
+	adv_len = os_strlen(adv_str);
+	adv_data_len = sizeof(struct p2ps_advertisement) + adv_len + 1 +
+		info_len + 1 + instance_len;
+
+	adv_data = os_zalloc(adv_data_len);
+	if (!adv_data)
+		return -1;
+
+	/**Initialize the DL List*/
+	dl_list_init(&adv_data->p2p_srv_asp2);
+
+	os_memcpy(adv_data->hash, buf, P2PS_HASH_LEN);
+	adv_data->id = adv_id;
+	adv_data->state = svc_state;
+	adv_data->config_methods = config_methods & p2p->cfg->config_methods;
+	adv_data->auto_accept = (u8) auto_accept;
+	os_memcpy(adv_data->svc_name, adv_str, adv_len);
+
+	p2p_info(p2p, "P2P: ASP2 Service Name:%s : adv_len[%d]",
+		 adv_data->svc_name,(int)adv_len);
+
+	for (i = 0; cpt_priority[i] && i < P2PS_FEATURE_CAPAB_CPT_MAX; i++) {
+		adv_data->cpt_priority[i] = cpt_priority[i];
+		adv_data->cpt_mask |= cpt_priority[i];
+	}
+
+	if (svc_info && info_len) {
+
+		/**Parse the Service Information and Prepare the Listin <key=value> format*/
+		p2p_parse_svc_info_asp2(p2p,adv_data,svc_info);
+
+		/*TODO: To keep backward compatibility, will remove it later*/
+		adv_data->svc_info = &adv_data->svc_name[adv_len + 1];
+		os_memcpy(adv_data->svc_info, svc_info, info_len);
+	}
+
+	if (instance_name && instance_len) {
+		if (svc_info && info_len)
+			adv_data->instance_name = &adv_data->svc_info[info_len + 1];
+		else
+			adv_data->instance_name = &adv_data->svc_name[adv_len + 1];
+
+		os_memcpy(adv_data->instance_name, instance_name, instance_len);
+	}
+
+	/*
+	 * Group Advertisements by service string. They do not need to be
+	 * sorted, but groups allow easier Probe Response instance grouping
+	 */
+
+	//TODO:As per ASP 2.0 spec,Service Type could be null so we may need
+	//to modify this structure
+	tmp = p2p->p2ps_adv_list;
+	prev = &p2p->p2ps_adv_list;
+	while (tmp) {
+		if (tmp->id == adv_data->id) {
+			if (os_strcmp(tmp->svc_name, adv_data->svc_name) != 0) {
+				os_free(adv_data);
+				return -1;
+			}
+			adv_data->next = tmp->next;
+			*prev = adv_data;
+			os_free(tmp);
+			goto inserted;
+		} else {
+			if (os_strcmp(tmp->svc_name, adv_data->svc_name) == 0) {
+				adv_data->next = tmp->next;
+				tmp->next = adv_data;
+				goto inserted;
+			}
+		}
+		prev = &tmp->next;
+		tmp = tmp->next;
+	}
+
+	/* No svc_name match found */
+	adv_data->next = p2p->p2ps_adv_list;
+	p2p->p2ps_adv_list = adv_data;
+
+inserted:
+	p2p_dbg(p2p,
+		"Added ASP2 advertisement adv_id=0x%x config_methods=0x%x svc_state=0x%x adv_str='%s' cpt_mask=0x%x",
+		adv_id, adv_data->config_methods, svc_state, adv_str,
+		adv_data->cpt_mask);
+
+	return 0;
+}
+
+void wpas_p2p_srv_asp2_free(struct p2p_srv_asp2 *asrv)
+{
+	dl_list_del(&asrv->list);
+	os_free(asrv->key);
+	os_free(asrv->value);
+	os_free(asrv);
+}
+#endif
 
 void p2p_service_flush_asp(struct p2p_data *p2p)
 {
@@ -2776,6 +2953,14 @@ void p2p_service_flush_asp(struct p2p_data *p2p)
 	adv = p2p->p2ps_adv_list;
 	while (adv) {
 		prev = adv;
+
+#if defined TIZEN_FEATURE_ASP
+		struct p2p_srv_asp2 *asrv, *an;
+		p2p_dbg(p2p, "Clear the ASP2 List Date if available");
+		dl_list_for_each_safe(asrv, an, &adv->p2p_srv_asp2,
+			  struct p2p_srv_asp2, list)
+		wpas_p2p_srv_asp2_free(asrv);
+#endif
 		adv = adv->next;
 		os_free(prev);
 	}
