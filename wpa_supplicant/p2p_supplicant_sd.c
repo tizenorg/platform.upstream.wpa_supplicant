@@ -1244,6 +1244,54 @@ u64 wpas_p2p_sd_request_asp(struct wpa_supplicant *wpa_s, const u8 *dst, u8 id,
 	return ret;
 }
 
+#if defined TIZEN_EXT_ASP
+u64 wpas_p2p_sd_request_asp2(struct wpa_supplicant *wpa_s, const u8 *dst, u8 id,
+			     const char *svc_str, const char *svc_info,
+			     const char* instance_name)
+{
+	struct wpabuf *tlvs;
+	size_t plen, svc_len = 0, svc_info_len= 0, instance_len = 0;
+	u64 ret;
+	const char *empty_str = "";
+
+	if (svc_info)
+		svc_info_len = os_strlen(svc_info);
+
+	if (svc_str)
+		svc_len = os_strlen(svc_str);
+
+	if (instance_name)
+		instance_len = os_strlen(instance_name);
+
+	if (svc_len > 0xff || svc_info_len > 0xff || instance_len > 0xff)
+		return 0;
+
+	plen = 1 + 1 + 1 + svc_len + 1 + svc_info_len + 1 + instance_len;
+	tlvs = wpabuf_alloc(2 + plen);
+	if (tlvs == NULL)
+		return 0;
+
+
+	wpa_printf(MSG_DEBUG, "P2P:ASP Service Discovery Request");
+
+	wpabuf_put_le16(tlvs, plen);
+	wpabuf_put_u8(tlvs, P2P_SERV_ASP);
+	wpabuf_put_u8(tlvs, id); /* Service Transaction ID */
+	wpabuf_put_u8(tlvs, (u8) svc_len); /* Service String Length */
+	wpabuf_put_data(tlvs, svc_str, svc_len);
+	wpabuf_put_u8(tlvs, (u8) instance_len); /* Service Instance Length */
+	wpabuf_put_data(tlvs, instance_name, instance_len);
+	wpabuf_put_u8(tlvs, (u8) svc_info_len); /* Service Information Length */
+	if (svc_info_len == 0 && !svc_info)
+		wpabuf_put_data(tlvs, empty_str, svc_info_len); /*Empty String*/
+	else
+		wpabuf_put_data(tlvs, svc_info, svc_info_len);
+	ret = wpas_p2p_sd_request(wpa_s, dst, tlvs);
+	wpabuf_free(tlvs);
+
+	return ret;
+}
+#endif
 
 #ifdef CONFIG_WIFI_DISPLAY
 
